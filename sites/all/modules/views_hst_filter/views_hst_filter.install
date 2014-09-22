@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * @file
+ * A module install
+ *
+ */
+ 
+/**
+ * Implements hook_install().
+ */
+function views_hst_filter_install() {
+  db_update('system')
+    ->fields(array('weight' => 11))
+    ->condition('name', 'views_hst_filter')
+    ->execute();
+}

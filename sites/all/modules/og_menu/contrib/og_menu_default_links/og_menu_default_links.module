@@ -1,0 +1,170 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function og_menu_default_links_menu() {
+  $items = array();
+
+  $items['admin/config/group/og_menu/default-links'] = array(
+    'title' => 'Default Links',
+    'description' => 'Configuration for OG Menu Default Links',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('og_menu_default_links_config_form'),
+    'access arguments' => array('administer og menu configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'og_menu_default_links.pages.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_help().
+ */
+function og_menu_default_links_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/group/og_menu/default-links':
+      $bundles = og_get_all_group_bundle();
+      return $bundles ? t('Specify default links to be added to get
+      each new OG Menu for each node bundle.  Enter each <b>URL</b> followed by
+      a <strong>title</strong> delimited by a pipe. Examples:
+      <ul>
+        <li>www.example.com|Example Link</li>
+        <li>faculty/[node:nid]|Link to Faculty Page for Group <em>(If tokens are enabled)</em>
+        </li>
+      </ul>') : t('There are no group type bundles yet.');
+    break;
+  }
+}
+
+/**
+ * Implements hook_menu_insert().
+ *
+ * This is used to automatically add links a series of
+ * predefined links to a new OG Menu.
+ */
+function og_menu_default_links_menu_insert($menu) {
+  _og_menu_default_links_set_default_links($menu, 'new');
+}
+
+/**
+ * Implements hook_form_FORMID_alter().
+ */
+function og_menu_default_links_form_og_admin_menu_overview_form_alter(&$form, &$form_state) {
+  $form['update_defaults_overview'] = array(
+     '#type' => 'markup',
+    '#markup' => '<p>These actions will remove and replace the default OG Menu links defined in the '
+      . l('OG Menu Settings', 'admin/config/group/og_menu/default-links') . '.</p>',
+    '#attributes' => array('style' => array('display:block')),
+  );
+
+  $form['update_defaults'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update Default Links: Selected'),
+  );
+
+  $form['update_defaults_all'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update Default Links: All OG Menus'),
+  );
+
+  $form['#submit'][] = 'og_menu_default_links_admin_menu_overview_form_submit';
+}
+
+/**
+ * Creates or recreates the default links new OG menu or Batch Updates of OG Menus
+ */
+function _og_menu_default_links_set_default_links($menu, $action = 'new') {
+  $menu_name = is_string($menu) ? $menu : $menu['menu_name'];
+  watchdog('info', ($action == 'new') ? "Default Links Added to OG Menu {$menu_name}" : "Default Links recreated to OG Menu {$menu_name}" );
+  // Check to see if this is the an og_menu
+  if (preg_match('/^menu-og-(\d+)$/', $menu_name, $matches)) {
+    if ($action == 'update') {
+      $result = db_query("SELECT * FROM {og_menu} WHERE menu_name = :menu_name", array(':menu_name' => $menu_name));
+      foreach ($result as $row) {
+        $menu_data = $row;
+      }
+      if (!isset($menu_data->group_type)) {
+        watchdog('debug', 'Menu not found');
+        return FALSE;
+      }
+      //If this is an update then delete the old menu links (module = 'og_menu')
+      //before recreating the links.
+      $result = db_query("SELECT mlid as mlid FROM {menu_links} WHERE module = 'og_menu' and menu_name = :menu", array(':menu' => $menu_name));
+      foreach ($result as $current_menu) {
+        menu_link_delete($current_menu->mlid);
+      }
+    } else {
+      $menu_data = (object) array(
+        'gid' => $matches[1],
+        'group_type' => 'node', //Assume this is a node
+      );
+    }
+    // Get Default Menu Items from variable
+    $entities = entity_load($menu_data->group_type, array($menu_data->gid));
+    $entity = array_shift($entities);
+    $group_type = isset($entity->type) ? strtolower('_' . $entity->type) : '';
+    $default_links = explode("\n", variable_get('og_menu_default_links_' . $menu_data->group_type . $group_type, ''));
+    foreach ($default_links as $weight => $default_link) {
+      $link_parts = explode("|", $default_link);
+      $path = token_replace($link_parts[0], array($menu_data->group_type => $entity));
+      $label = (isset($link_parts[1])) ? token_replace($link_parts[1], array($menu_data->group_type => $entity)) : $path;
+      // Create link
+      $link = array(
+        'link_path' => $path,
+        'link_title' => $label,
+        'menu_name' => $menu_name,
+        'router_path' => 'faculty/%',
+        'module' => 'og_menu',
+        'weight' => $weight,
+      );
+      $mlid = menu_link_save($link);
+    }
+  }
+}
+
+/**
+ * Process result from OG Menu administration form.
+ */
+function og_menu_default_links_admin_menu_overview_form_submit($form, &$form_state) {
+  switch ($form_state['clicked_button']['#id']) {
+    case 'edit-update-defaults':
+      $menus = array_filter(array_values($form_state['values']['og_menu_menu_list']));
+      og_menu_default_links_batch_default_links($menus);
+      break;
+    case 'edit-update-defaults-all':
+      $results = db_query("select menu_name as menu_name from {og_menu}");
+      foreach ($results as $row) {
+        $menus[] = $row->menu_name;
+      }
+      og_menu_default_links_batch_default_links($menus);
+      break;
+  }
+}
+
+/**
+ * Implements hook_og_menu_admin_menu_overview_form_tableselect().
+ * Make sure we can use a tableselect.
+ */
+function og_menu_default_links_og_menu_admin_menu_overview_form_tableselect() {
+  return TRUE;
+}
+
+/**
+ * Batch Manager
+ */
+function og_menu_default_links_batch_default_links($menus) {
+  $batch = array(
+    'title' => t('Updating Default link'),
+    'operations' => array(
+      array('og_menu_default_links_batch_default_links_process', array($menus)),
+    ),
+    'finished' => 'og_menu_default_links_batch_default_links_finished',
+    'init_message' => t('Update of OG Menu default links is starting...'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('An error was encountered updating OG Menu Default Links.'),
+    'file' => drupal_get_path('module', 'og_menu_default_links') . '/og_menu_default_links.batch.inc',
+  );
+  batch_set($batch);
+}

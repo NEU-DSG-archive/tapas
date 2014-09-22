@@ -1,0 +1,1389 @@
+<?php
+
+/**
+ * @file
+ * Provides methods for serving personalized content fragments.
+ */
+
+
+/**
+ * Implements hook_menu().
+ */
+function authcache_p13n_menu() {
+  $items['admin/config/system/authcache/p13n'] = array(
+    'title' => 'Personalization',
+    'description' => 'List markup substitution configuration objects',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('authcache_p13n_admin_markup_configs'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'authcache_p13n.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/system/authcache/p13n/markup-substitution'] = array(
+    'title' => 'Markup Substitution',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/config/system/authcache/p13n/frontcontroller'] = array(
+    'title' => 'Frontcontroller',
+    'description' => 'Rebuild request router for frontcontroller serving personalized fragments',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('authcache_p13n_admin_routes'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'authcache_p13n.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/system/authcache/p13n/frontcontroller/route'] = array(
+    'title' => 'Route Definition',
+    'description' => 'Show route definition for a given route',
+    'page callback' => 'authcache_p13n_admin_route_page',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'authcache_p13n.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_authcache_request_exclude().
+ */
+function authcache_p13n_authcache_request_exclude() {
+  if (authcache_p13n_is_authcache_p13n_request()) {
+    return t('Authcache personalization');
+  }
+}
+
+
+/**
+ * @defgroup authcache_p13n_markup Markup substitution
+ * @{
+ * Replace personalized markup on cacheable pages for authenticated users.
+ *
+ * Functions and hook implementations in this group help with replacing
+ * personalized markup on cacheable pages.
+ */
+
+
+/**
+ * Return information about fragments implemented by other modules.
+ */
+function authcache_p13n_fragment_info() {
+  $info = &drupal_static(__FUNCTION__);
+
+  if (!isset($info)) {
+    $info = module_invoke_all('authcache_p13n_fragment');
+    drupal_alter('authcache_p13n_fragment', $info);
+  }
+
+  return $info;
+}
+
+
+/**
+ * Return information about settings implemented by other modules.
+ */
+function authcache_p13n_setting_info() {
+  $info = &drupal_static(__FUNCTION__);
+
+  if (!isset($info)) {
+    $info = module_invoke_all('authcache_p13n_setting');
+    drupal_alter('authcache_p13n_setting', $info);
+  }
+
+  return $info;
+}
+
+
+/**
+ * Return information about fragment assemblies implemented by other modules.
+ */
+function authcache_p13n_assembly_info() {
+  $info = &drupal_static(__FUNCTION__);
+
+  if (!isset($info)) {
+    $info = module_invoke_all('authcache_p13n_assembly');
+    drupal_alter('authcache_p13n_assembly', $info);
+  }
+
+  return $info;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function authcache_p13n_theme() {
+  return array(
+    'authcache_p13n_fragment' => array(
+      'variables' => array(
+        'fragment' => '',
+        'param' => '',
+        'callback' => NULL,
+        'clients' => NULL,
+        'fallback' => 'hide',
+        'original' => NULL,
+      ),
+    ),
+    'authcache_p13n_setting' => array(
+      'variables' => array(
+        'setting' => '',
+        'param' => '',
+        'callback' => NULL,
+        'clients' => NULL,
+        'fallback' => 'hide',
+      ),
+    ),
+    'authcache_p13n_assembly' => array(
+      'variables' => array(
+        'assembly' => '',
+        'param' => '',
+        'callback' => NULL,
+        'clients' => NULL,
+        'fallback' => 'hide',
+      ),
+    ),
+    'authcache_p13n_partial' => array(
+      'variables' => array(
+        'assembly' => '',
+        'partial' => '',
+        'param' => '',
+        'clients' => NULL,
+        'fallback' => 'hide',
+        'original' => NULL,
+      ),
+    ),
+    'authcache_p13n_config_client_order' => array(
+      'render element' => 'element',
+    ),
+  );
+}
+
+
+/**
+ * Preprocess a placeholder for a personalized fragment.
+ */
+function template_preprocess_authcache_p13n_fragment(&$variables) {
+  $fragment = $variables['fragment'];
+  $param = $variables['param'];
+  $clients = $variables['clients'];
+
+  $client = authcache_p13n_client_get_preferred('fragment', $fragment, $clients);
+  if ($client && strlen($fragment)) {
+    $url = authcache_p13n_request_get_callback('frag/' . $fragment, $param);
+  }
+
+  if (!empty($url)) {
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_fragment__' . $client;
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_fragment__' . $client . '__' . $fragment;
+
+    $variables['client'] = $client;
+    $variables['url'] = $url;
+  }
+  else {
+    $fallback = $variables['fallback'];
+    $original = $variables['original'];
+
+    $context = array(
+      'type' => 'fragment',
+      'id' => $fragment,
+      'param' => $param,
+      'clients' => $clients,
+      'original' => $original,
+    );
+    $fallback_markup = '<!-- Error: Failed to render fragment -->';
+    drupal_alter('authcache_p13n_client_fallback', $fallback_markup, $fallback, $context);
+    $variables['fallback_markup'] = $fallback_markup;
+  }
+}
+
+
+/**
+ * Theme a placeholder for a personalized fragment.
+ */
+function theme_authcache_p13n_fragment($variables) {
+  return $variables['fallback_markup'];
+}
+
+
+/**
+ * Preprocess a placeholder for a personalized setting.
+ */
+function template_preprocess_authcache_p13n_setting(&$variables) {
+  $setting = $variables['setting'];
+  $param = $variables['param'];
+  $clients = $variables['clients'];
+
+  $client = authcache_p13n_client_get_preferred('setting', $setting, $clients);
+  if ($client && strlen($setting)) {
+    $url = authcache_p13n_request_get_callback('setting/' . $setting, $param);
+  }
+
+  if (!empty($url)) {
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_setting__' . $client;
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_setting__' . $client . '__' . $setting;
+
+    $variables['client'] = $client;
+    $variables['url'] = $url;
+  }
+  else {
+    $fallback = $variables['fallback'];
+
+    $context = array(
+      'type' => 'setting',
+      'id' => $setting,
+      'param' => $param,
+      'clients' => $clients,
+      'original' => NULL,
+    );
+    $fallback_markup = '<!-- Error: Failed to render setting -->';
+    drupal_alter('authcache_p13n_client_fallback', $fallback_markup, $fallback, $context);
+    $variables['fallback_markup'] = $fallback_markup;
+  }
+}
+
+
+/**
+ * Theme a placeholder for a personalized setting.
+ */
+function theme_authcache_p13n_setting($variables) {
+  return $variables['fallback_markup'];
+}
+
+
+/**
+ * Preprocess a placeholder for a personalized assembly.
+ */
+function template_preprocess_authcache_p13n_assembly(&$variables) {
+  $assembly = $variables['assembly'];
+  $param = $variables['param'];
+  $clients = $variables['clients'];
+
+  $client = authcache_p13n_client_get_preferred('assembly', $assembly, $clients);
+  if ($client && strlen($assembly)) {
+    $url = authcache_p13n_request_get_callback('asm/' . $assembly, $param);
+  }
+
+  if (!empty($url)) {
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_assembly__' . $client;
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_assembly__' . $client . '__' . $assembly;
+
+    $variables['client'] = $client;
+    $variables['url'] = $url;
+    $variables['class'] = drupal_html_class('authcache-p13n-asm-' . $assembly);
+  }
+  else {
+    $fallback = $variables['fallback'];
+
+    $context = array(
+      'type' => 'assembly',
+      'id' => $assembly,
+      'param' => $param,
+      'clients' => $clients,
+      'original' => NULL,
+    );
+    $fallback_markup = '<!-- Error: Failed to render assembly -->';
+    drupal_alter('authcache_p13n_client_fallback', $fallback_markup, $fallback, $context);
+    $variables['fallback_markup'] = $fallback_markup;
+  }
+}
+
+
+/**
+ * Theme a placeholder for a personalized assembly.
+ */
+function theme_authcache_p13n_assembly($variables) {
+  return $variables['fallback_markup'];
+}
+
+
+/**
+ * Preprocess a placeholder for a part of an assembly.
+ */
+function template_preprocess_authcache_p13n_partial(&$variables) {
+  $partial = $variables['partial'];
+  $assembly = $variables['assembly'];
+  $param = $variables['param'];
+  $clients = $variables['clients'];
+
+  $client = authcache_p13n_client_get_preferred('assembly', $assembly, $clients);
+  if ($client && strlen($partial) && strlen($assembly)) {
+    $exists = authcache_p13n_request_exists('asm/' . $assembly);
+  }
+
+  if (!empty($exists)) {
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_partial__' . $client;
+    $variables['theme_hook_suggestions'][] = 'authcache_p13n_partial__' . $client . '__' . $assembly;
+
+    $variables['client'] = $client;
+    $variables['class'] = drupal_html_class('authcache-p13n-asm-' . $assembly);
+
+    authcache_p13n_add_partial($assembly, $partial, $param);
+  }
+  else {
+    $fallback = $variables['fallback'];
+    $original = $variables['original'];
+
+    $context = array(
+      'type' => 'partial',
+      'id' => $partial,
+      'param' => $param,
+      'assembly' => $assembly,
+      'clients' => $clients,
+      'original' => $original,
+    );
+    $fallback_markup = '<!-- Error: Failed to render partial -->';
+    drupal_alter('authcache_p13n_client_fallback', $fallback_markup, $fallback, $context);
+    $variables['fallback_markup'] = $fallback_markup;
+  }
+}
+
+
+/**
+ * Theme a placeholder for a part of an assembly.
+ */
+function theme_authcache_p13n_partial($variables) {
+  return $variables['fallback_markup'];
+}
+
+
+/**
+ * Attach fragment to the target render element.
+ */
+function authcache_p13n_attach(&$target, $element) {
+  // Attach post render callback and replacement element.
+  $target['#post_render'][] = 'authcache_p13n_element_post_render';
+  $target['#authcache_p13n_element'] = $element;
+}
+
+
+/**
+ * Post render callback for elements with personalized content.
+ *
+ * Either replace element with rendered content of '#authcache_p13n_element or
+ * perform fallback operation.
+ */
+function authcache_p13n_element_post_render($markup, $element) {
+  if (authcache_page_is_cacheable() && !empty($element['#authcache_p13n_element'])) {
+    if (!isset($element['#authcache_p13n_element']['#original'])) {
+      $element['#authcache_p13n_element']['#original'] = $markup;
+    }
+    $markup = render($element['#authcache_p13n_element']);
+  }
+  return $markup;
+}
+
+
+/**
+ * Add a deferred setting to the page.
+ */
+function authcache_p13n_add_setting($element = array()) {
+  $settings = &drupal_static(__FUNCTION__, array());
+
+  if ($element && !empty($element['#setting'])) {
+    $settings[] = array($element['#setting'] => $element);
+  }
+
+  return $settings;
+}
+
+
+/**
+ * Return deferred settings for this page.
+ */
+function authcache_p13n_get_settings() {
+  return drupal_array_merge_deep_array(authcache_p13n_add_setting());
+}
+
+
+/**
+ * Add partial fragment to page.
+ */
+function authcache_p13n_add_partial($assembly = NULL, $frag = NULL, $param = NULL) {
+  $partials = &drupal_static(__FUNCTION__, array());
+
+  if ($assembly && $frag) {
+    $partials[] = array($assembly => array($frag => array($param)));
+  }
+
+  return $partials;
+}
+
+
+/**
+ * Return all assemblies for this page (including added partials).
+ */
+function authcache_p13n_get_assemblies() {
+  return drupal_array_merge_deep_array(authcache_p13n_add_partial());
+}
+
+
+/**
+ * Implements hook_preprocess_html().
+ */
+function authcache_p13n_preprocess_html(&$variables) {
+  foreach (authcache_p13n_get_settings() as $name => $element) {
+    $variables['page']['page_bottom']['authcache_setting'][$name] = array(
+      '#theme' => 'authcache_p13n_setting',
+    ) + $element;
+  }
+
+  foreach (authcache_p13n_get_assemblies() as $name => $params) {
+    $variables['page']['page_bottom']['authcache_assembly'][$name] = array(
+      '#theme' => 'authcache_p13n_assembly',
+      '#assembly' => $name,
+      '#param' => $params,
+    );
+  }
+}
+
+
+/**
+ * Implements hook_form_alter().
+ */
+function authcache_p13n_form_alter(&$form, &$form_state, $form_id) {
+  if (authcache_p13n_is_authcache_p13n_request()) {
+    // When forms are rendered as a part of a personalization fragment remove
+    // the action-attribute from the form-element.
+    $form['#action'] = "";
+  }
+}
+
+
+/**
+ * Discover theme suggestions provided by client-modules.
+ *
+ * @param string $client
+ *   The client name (e.g. authcache_ajax or authcache_esi).
+ *
+ * @return array
+ *   The functions found, suitable for returning from hook_theme;
+ *
+ * @see drupal_find_theme_functions()
+ */
+function authcache_p13n_find_theme_functions($client) {
+  $implementations = array();
+
+  foreach (authcache_p13n_theme() as $hook => $info) {
+    $new_hook = $hook . '__' . $client;
+    $function = 'theme_' . $new_hook;
+    if (function_exists('theme_' . $new_hook)) {
+      $arg_name = isset($info['variables']) ? 'variables' : 'render element';
+      $implementations[$new_hook] = array(
+        'function' => $function,
+        $arg_name => $info[$arg_name],
+        'base hook' => $hook,
+      );
+    }
+  }
+
+  return $implementations;
+}
+
+/**
+ * @} End of "defgroup authcache_p13n_markup"
+ */
+
+
+/**
+ * @defgroup authcache_p13n_session Session cache control
+ * @{
+ * Invalidate browser cache when user session changes
+ */
+
+
+/**
+ * Invalidate user specific content.
+ */
+function authcache_p13n_session_invalidate($report_only = FALSE) {
+  $should_invalidate = &drupal_static(__FUNCTION__, FALSE);
+
+  if (empty($report_only)) {
+    $should_invalidate = TRUE;
+  }
+
+  return $should_invalidate;
+}
+
+
+/**
+ * Implements hook_exit().
+ */
+function authcache_p13n_exit() {
+  // Invalidate session cache on post requests.
+  if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    authcache_p13n_session_invalidate();
+  }
+
+  if (authcache_p13n_session_invalidate(TRUE)) {
+    module_invoke_all('authcache_p13n_session_invalidate');
+  }
+}
+
+
+/**
+ * Implements hook_user_login().
+ */
+function authcache_p13n_user_login(&$edit, $account) {
+  authcache_p13n_session_invalidate();
+}
+
+
+/**
+ * Implements hook_user_logout().
+ */
+function authcache_p13n_user_logout($account) {
+  authcache_p13n_session_invalidate();
+}
+
+
+/**
+ * Implements hook_authcache_cookie().
+ *
+ * Remove cache-version cookie when session is empty.
+ */
+function authcache_p13n_authcache_cookie($account) {
+  global $user;
+
+  $cookie = array();
+
+  // See drupal_session_commit().
+  if (empty($user->uid) && empty($_SESSION)) {
+    // Make sure cookie is not set when there is no session.
+    $cookie['aucp13n']['present'] = FALSE;
+  }
+  elseif (authcache_p13n_session_invalidate(TRUE) || empty($_COOKIE['aucp13n'])) {
+    // Renew cookie if necessary.
+    $cookie['aucp13n']['present'] = TRUE;
+    $cookie['aucp13n']['value'] = base_convert(mt_rand(), 10, 36);
+  }
+
+  return $cookie;
+}
+
+
+/**
+ * @} End of "defgroup authcache_p13n_session"
+ */
+
+
+/**
+ * @defgroup authcache_p13n_client Client implementations
+ * @{
+ * Return information about client modules capable of rendering fragments
+ */
+
+
+/**
+ * Return information about fragment clients.
+ *
+ * @see hook_authcache_p13n_client()
+ */
+function authcache_p13n_client_info() {
+  $info = &drupal_static(__FUNCTION__);
+
+  if (!isset($info)) {
+    $info = module_invoke_all('authcache_p13n_client');
+    drupal_alter('authcache_p13n_client', $info);
+  }
+
+  return $info;
+}
+
+
+/**
+ * Return the preferred client for the given fragment/assembly/setting.
+ */
+function authcache_p13n_client_get_preferred($type, $id, $clients = NULL) {
+  $preferred_clients = &drupal_static(__FUNCTION__);
+
+  if (!isset($preferred_clients[$type][$id])) {
+    // Gather clients available during the current page request.
+    $available_clients = array_filter(authcache_p13n_client_info(), function($client) {
+      return !empty($client['enabled']);
+    });
+
+    // Check for clients enabled in the given configuration.
+    if (!isset($clients)) {
+      $clients = $available_clients;
+    }
+    drupal_alter('authcache_p13n_client_order', $clients, $type, $id);
+    $enabled_clients = array_filter($clients, function($client) {
+      return !isset($client['status']) || !empty($client['status']);
+    });
+
+    // Collect and sort configured clients.
+    $configured_clients = array_intersect_key($enabled_clients, $available_clients);
+    foreach (array_keys($configured_clients) as $name) {
+      $configured_clients[$name] += $available_clients[$name];
+    }
+    uasort($configured_clients, 'drupal_sort_weight');
+
+    $preferred_clients[$type][$id] = key($configured_clients) ?: FALSE;
+  }
+
+  // Return the first configured client.
+  return $preferred_clients[$type][$id];
+}
+
+
+/**
+ * Implements hook_authcache_p13n_client_fallback_alter().
+ */
+function authcache_p13n_authcache_p13n_client_fallback_alter(&$markup, $method, $context) {
+  switch ($method) {
+    case 'cancel':
+      authcache_cancel(t('No client for %type %id', array('%type' => $context['type'], '%id' => $context['id'])));
+      if (isset($context['original'])) {
+        $markup = $context['original'];
+      }
+      break;
+  }
+}
+
+
+/**
+ * @} End of "defgroup authcache_p13n_client"
+ */
+
+
+/**
+ * @defgroup authcache_p13n_request Request handlers
+ * @{
+ * Maintain a registry of handler classes for personalization requests.
+ */
+
+
+/**
+ * Return true if the given route exists in the router.
+ */
+function authcache_p13n_request_exists($route_id) {
+  $router = authcache_p13n_request_get_router();
+  return $router->exists($route_id);
+}
+
+
+/**
+ * Return uri for the request.
+ *
+ * @return string|null
+ *   Either the URL for the given route_id plus arguments or null, if no such
+ *   request is available.
+ */
+function authcache_p13n_request_get_callback($route_id, $arg) {
+  $router = authcache_p13n_request_get_router();
+  return $router->generateUrl($route_id, $arg);
+}
+
+
+/**
+ * Generate a list of requests resources.
+ *
+ * @see hook_authcache_p13n_request()
+ */
+function authcache_p13n_request_resources() {
+  $definitions = module_invoke_all('authcache_p13n_request');
+  $resources = array();
+
+  foreach ($definitions as $name => $definition) {
+    $resources[$name] = AuthcacheP13nObjectFactory::normalizeResources($definition);
+  }
+  drupal_alter('authcache_p13n_request', $resources);
+
+  return $resources;
+}
+
+
+/**
+ * Invoke hook_authcache_p13n_resource_processors().
+ */
+function authcache_p13n_resource_processors() {
+  $processors = module_invoke_all('authcache_p13n_resource_processors');
+  drupal_alter('authcache_p13n_resource_processors', $processors);
+
+  return $processors;
+}
+
+
+/**
+ * Implements hook_authcache_p13n_resource_processors().
+ */
+function authcache_p13n_authcache_p13n_resource_processors() {
+  return array(
+    'expand_partial' => '_authcache_p13n_resource_proc_partial',
+    'expand_partials' => '_authcache_p13n_resource_proc_partials',
+    'expand_filters' => '_authcache_p13n_resource_proc_filters',
+    'expand_context_providers' => '_authcache_p13n_resource_proc_context_providers',
+  ) + AuthcacheP13nObjectFactory::defaultProcessors();
+}
+
+
+/**
+ * Populate resource definition for a partial fragment with default handlers.
+ */
+function _authcache_p13n_resource_proc_partial($subject, $arg_ignored, $rname, $factory) {
+  if (!is_array($subject) || !isset($subject['renderer'])) {
+    $subject = array(
+      'renderer' => $subject,
+    );
+  }
+
+  // Add fallback references.
+  $subject += array(
+    'validator' => '@' . $rname . '/renderer[accept_instance(AuthcacheP13nFragmentValidatorInterface)]',
+    'loader' => '@' . $rname . '/renderer[accept_instance(AuthcacheP13nFragmentLoaderInterface)]',
+    'access' => '@' . $rname . '/renderer[accept_instance(AuthcacheP13nFragmentAccessInterface)]',
+  );
+
+  $result = array();
+  foreach ($subject as $name => $resource) {
+    $factory->addResource($rname . '/' . $name, $resource);
+    $result[$name] = '@' . $rname . '/' . $name;
+  }
+
+  return $result;
+}
+
+
+/**
+ * Generate resources for each entry of an associative array defining partials.
+ */
+function _authcache_p13n_resource_proc_partials($subject, $arg, $rname, $factory) {
+  $result = array();
+  foreach ($subject as $name => $partial) {
+    $factory->addResource($rname . '/' . $name, $partial);
+    $result[$name] = '@' . $rname . '/' . $name . '[expand_partial]';
+  }
+  return $result;
+}
+
+
+/**
+ * Generate resources from an associative array defining request filters.
+ */
+function _authcache_p13n_resource_proc_filters($subject, $arg, $rname, $factory) {
+  $result = array();
+
+  uasort($subject, 'drupal_sort_weight');
+  foreach ($subject as $name => $filter) {
+    $factory->addResource($rname . '/' . $name, $filter);
+    $result[$name] = '@' . $rname . '/' . $name . '[require_instance(AuthcacheP13nFilterInterface)]';
+  }
+  return $result;
+}
+
+
+/**
+ * Generate resources from an associative array defining context providers.
+ */
+function _authcache_p13n_resource_proc_context_providers($subject, $arg, $rname, $factory) {
+  $result = array();
+
+  uasort($subject, 'drupal_sort_weight');
+  foreach ($subject as $name => $context_provider) {
+    $factory->addResource($rname . '/' . $name, $context_provider);
+    $result[$name] = '@' . $rname . '/' . $name . '[require_instance(AuthcacheP13nContextProviderInterface)]';
+  }
+  return $result;
+}
+
+
+/**
+ * Implements hook_authcache_p13n_request().
+ */
+function authcache_p13n_authcache_p13n_request() {
+  $requests = array();
+  $frontcontroller_path = variable_get('authcache_p13n_frontcontroller_path', drupal_get_path('module', 'authcache_p13n') . '/frontcontroller/index.php');
+
+  $fragments = authcache_p13n_fragment_info();
+  $fragment_defaults = array(
+    // Overridable resources.
+    'fragment' => NULL,
+    'fragment validator' => '@fragment[accept_instance(AuthcacheP13nFragmentValidatorInterface)]',
+    'fragment loader' => '@fragment[accept_instance(AuthcacheP13nFragmentLoaderInterface)]',
+    'fragment access' => '@fragment[accept_instance(AuthcacheP13nFragmentAccessInterface)]',
+    'filters' => array(
+      'request' => array(
+        '@cache control header',
+      ),
+    ),
+    'cache maxage' => 600,
+    'cache granularity' => AuthcacheP13nCacheGranularity::PER_USER,
+    'bootstrap phase' => NULL,
+    'context providers' => array(),
+
+    // Normally not overridden.
+    'cache granularity object' => array(
+      '#class' => 'AuthcacheP13nCacheGranularity',
+      '#arguments' => array(
+        '@cache granularity',
+      ),
+    ),
+    'cache control header' => array(
+      '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@cache maxage',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'content builder' => array(
+      '#class' => 'AuthcacheP13nFragmentBuilder',
+      '#arguments' => array(
+        '@fragment',
+        '@fragment validator',
+        '@fragment loader',
+        '@fragment access',
+      ),
+    ),
+    'request validator' => '@content builder',
+    'content encoder' => array(
+      '#class' => 'AuthcacheP13nHTMLContent',
+    ),
+    'handler' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestHandler',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+        '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+        '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+        '@filters',
+        '@bootstrap phase',
+        '@context providers[expand_context_providers]',
+      ),
+    ),
+    'frontcontroller' => array(
+      '#value' => $frontcontroller_path,
+    ),
+    'url generator' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+      '#arguments' => array(
+        '@frontcontroller',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'services' => array(
+      '#class' => 'AuthcacheP13nDefaultCoreService',
+    ),
+  );
+  foreach ($fragments as $key => $config) {
+    $requests['frag/' . $key] = $config + $fragment_defaults;
+  }
+
+  $settings = authcache_p13n_setting_info();
+  $setting_defaults = array(
+    // Overridable resources.
+    'setting' => NULL,
+    'setting validator' => '@setting[accept_instance(AuthcacheP13nSettingValidatorInterface)]',
+    'setting access' => '@setting[accept_instance(AuthcacheP13nSettingAccessInterface)]',
+    'setting target' => NULL,
+    'filters' => array(
+      'request' => array(
+        '@cache control header',
+      ),
+    ),
+    'cache maxage' => 600,
+    'cache granularity' => AuthcacheP13nCacheGranularity::PER_USER,
+    'bootstrap phase' => NULL,
+    'context providers' => array(),
+
+    // Normally not overridden.
+    'cache granularity object' => array(
+      '#class' => 'AuthcacheP13nCacheGranularity',
+      '#arguments' => array(
+        '@cache granularity',
+      ),
+    ),
+    'cache control header' => array(
+      '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@cache maxage',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'content builder' => array(
+      '#class' => 'AuthcacheP13nSettingBuilder',
+      '#arguments' => array(
+        '@setting',
+        '@setting validator',
+        '@setting access',
+        '@setting target',
+      ),
+    ),
+    'request validator' => '@content builder[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+    'content encoder' => array(
+      '#class' => 'AuthcacheP13nJSONContent',
+    ),
+    'handler' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestHandler',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+        '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+        '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+        '@filters',
+        '@bootstrap phase',
+        '@context providers[expand_context_providers]',
+      ),
+    ),
+    'frontcontroller' => array(
+      '#value' => $frontcontroller_path,
+    ),
+    'url generator' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+      '#arguments' => array(
+        '@frontcontroller',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'services' => array(
+      '#class' => 'AuthcacheP13nDefaultCoreService',
+    ),
+  );
+  foreach ($settings as $key => $config) {
+    $requests['setting/' . $key] = $config + $setting_defaults;
+  }
+
+  $assemblies = authcache_p13n_assembly_info();
+  $assembly_defaults = array(
+    // Overridable resources.
+    'partials' => array(),
+    'filters' => array(
+      'request' => array(
+        '@cache control header',
+      ),
+    ),
+    'cache maxage' => 600,
+    'cache granularity' => AuthcacheP13nCacheGranularity::PER_USER,
+    'bootstrap phase' => NULL,
+    'context providers' => array(),
+
+    // Normally not overridden.
+    'cache granularity object' => array(
+      '#class' => 'AuthcacheP13nCacheGranularity',
+      '#arguments' => array(
+        '@cache granularity',
+      ),
+    ),
+    'cache control header' => array(
+      '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@cache maxage',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'content builder' => array(
+      '#class' => 'AuthcacheP13nFragmentAssemblyBuilder',
+      '#arguments' => array('@partials[expand_partials]'),
+    ),
+    'request validator' => '@content builder[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+    'content encoder' => array(
+      '#class' => 'AuthcacheP13nJSONContent',
+    ),
+    'handler' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestHandler',
+      '#arguments' => array(
+        '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+        '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+        '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+        '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+        '@filters',
+        '@bootstrap phase',
+        '@context providers[expand_context_providers]',
+      ),
+    ),
+    'frontcontroller' => array(
+      '#value' => $frontcontroller_path,
+    ),
+    'url generator' => array(
+      '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+      '#arguments' => array(
+        '@frontcontroller',
+        '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+      ),
+    ),
+    'services' => array(
+      '#class' => 'AuthcacheP13nDefaultCoreService',
+    ),
+  );
+  foreach ($assemblies as $key => $config) {
+    $requests['asm/' . $key] = $config + $assembly_defaults;
+  }
+
+  return $requests;
+}
+
+
+/**
+ * Rebuild the router of personalization request handlers.
+ */
+function authcache_p13n_request_router_rebuild() {
+  $router = authcache_p13n_request_get_router();
+  $router->rebuild();
+}
+
+
+/**
+ * Return the router class for requests.
+ */
+function authcache_p13n_request_get_router() {
+  $router = &drupal_static(__FUNCTION__);
+
+  if (!isset($router)) {
+    $routerclass = variable_get('authcache_p13n_router', 'AuthcacheP13nDefaultRequestRouter');
+    $router = new $routerclass();
+  }
+
+  return $router;
+}
+
+
+/**
+ * Implements hook_modules_enabled().
+ */
+function authcache_p13n_modules_enabled($modules) {
+  authcache_p13n_request_router_rebuild();
+}
+
+
+/**
+ * Implements hook_modules_disabled().
+ */
+function authcache_p13n_modules_disabled($modules) {
+  authcache_p13n_request_router_rebuild();
+}
+
+
+/**
+ * Implements hook_flush_caches().
+ */
+function authcache_p13n_flush_caches() {
+  return array('cache_authcache_p13n');
+}
+
+
+/**
+ * Return TRUE if the P13n front controller was used for this request.
+ */
+function authcache_p13n_is_authcache_p13n_request() {
+  return defined('AUTHCACHE_P13N_ROOT');
+}
+
+
+/**
+ * @} End of "defgroup authcache_p13n_request"
+ */
+
+
+/**
+ * @defgroup authcache_p13n_config Personalized request configuration widget
+ * @{
+ * Reusable form API element for markup substitution / request settings
+ */
+
+
+/**
+ * Implements hook_element_info().
+ */
+function authcache_p13n_element_info() {
+  $types['authcache_p13n_config'] = array(
+    '#input' => TRUE,
+    '#process' => array('authcache_p13n_process_config', 'form_process_container'),
+    '#theme_wrappers' => array('container'),
+  );
+  return $types;
+}
+
+
+/**
+ * Return default value for config widget.
+ */
+function authcache_p13n_config_defaults() {
+  return array(
+    'status' => FALSE,
+    'lifespan' => 3600,
+    'lifespan_custom' => NULL,
+    'peruser' => 1,
+    'perpage' => 0,
+    'fallback' => 'cancel',
+    'clients' => authcache_p13n_client_info(),
+  );
+}
+
+
+/**
+ * Form API process callback for config element.
+ */
+function authcache_p13n_process_config($element, &$form_state) {
+  // Prepare #default_value
+  $defaults = authcache_p13n_config_defaults();
+  if (empty($element['#default_value'])) {
+    $element['#default_value'] = $defaults;
+  }
+  else {
+    $element['#default_value'] = $element['#default_value'] + $defaults;
+  }
+
+  $options = array(60, 300, 1800, 3600, 21600, 518400);
+  $options = drupal_map_assoc($options, 'format_interval');
+  $options = array(0 => t('Never cache')) + $options + array('custom' => t('Custom'));
+
+  $element['#tree'] = TRUE;
+  $element['#attached']['js'][] = drupal_get_path('module', 'authcache_p13n') . '/authcache_p13n.admin.js';
+  $element['#attached']['css'][] = drupal_get_path('module', 'authcache_p13n') . '/authcache_p13n.admin.css';
+
+  $enabled_id = drupal_html_id($element['#id'] . '-status');
+  $element['status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Authcache'),
+    '#description' => t('Use ESI or Ajax to deliver this content.'),
+    '#default_value' => $element['#default_value']['status'],
+    '#id' => $enabled_id,
+  );
+
+  $container_id = drupal_html_id($element['#id'] . '-container');
+  $element['settings'] = array(
+    '#type' => 'container',
+    '#attributes' => array('class' => array('authcache-p13n-config-settings-wrapper')),
+    '#parents' => $element['#parents'],
+    '#id' => $container_id,
+    '#states' => array(
+      'visible' => array(
+        '#' . $enabled_id => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  $lifespan_id = drupal_html_id($element['#id'] . '-lifespan');
+  $element['settings']['lifespan'] = array(
+    '#type' => 'select',
+    '#title' => t('Cache lifetime'),
+    '#description' => t('The maximum time an external cache or the browser can keep a copy of this content.'),
+    '#options' => $options,
+    '#default_value' => $element['#default_value']['lifespan'],
+    '#id' => $lifespan_id,
+  );
+
+  $element['settings']['lifespan_custom'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Seconds'),
+    '#size' => '25',
+    '#maxlength' => '30',
+    '#description' => t('Cache lifetime in seconds.'),
+    '#default_value' => $element['#default_value']['lifespan_custom'],
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#states' => array(
+      'visible' => array(
+        '#' . $lifespan_id => array('value' => 'custom'),
+      ),
+    ),
+  );
+
+  $element['settings']['peruser'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Per user'),
+    '#description' => t('Select when content is different depending on user.'),
+    '#default_value' => $element['#default_value']['peruser'],
+    '#states' => array(
+      'invisible' => array(
+        '#edit-authcache-lifespan' => array('value' => '0'),
+      ),
+    ),
+  );
+
+  $element['settings']['perpage'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Per page'),
+    '#description' => t('Select when content is different depending on the URL of the page.'),
+    '#default_value' => $element['#default_value']['perpage'],
+    '#states' => array(
+      'invisible' => array(
+        '#edit-authcache-lifespan' => array('value' => '0'),
+      ),
+    ),
+  );
+
+  // Clients.
+  $parents_for_clients = array_merge($element['#parents'], array('clients'));
+  $client_info = authcache_p13n_client_info();
+  $clients = $element['#default_value']['clients'];
+  $element['settings']['#clients'] = $clients;
+
+  // Status.
+  $client_status_id = drupal_html_id($element['#id'] . '-clients-status-wrapper');
+  $element['settings']['clients']['status'] = array(
+    '#type' => 'item',
+    '#title' => t('Enabled clients'),
+    '#prefix' => '<div ' . drupal_attributes(array('id' => $client_status_id, 'class' => 'clients-status-wrapper')) . '>',
+    '#suffix' => '</div>',
+    '#description' => t('Select the method(s) used to substitute personalized markup.'),
+  );
+  $element['settings']['clients']['status']['status-warning'] = array(
+    '#type' => 'container',
+    '#attributes' => array(
+      'class' => array(
+        'authcache-p13n-clients-warning',
+        'messages',
+        'warning',
+      ),
+    ),
+    'message' => array(
+      '#markup' => count($client_info) > 0 ?
+      t('Please select at least one client, otherwise markup substitution will not work.') :
+      t('No client module enabled, markup substitution will not work.'),
+    ),
+  );
+
+  $enabled_clients = 0;
+  foreach ($client_info as $name => $client) {
+    $status = !isset($clients[$name]['status']) || !empty($clients[$name]['status']);
+    $element['settings']['clients']['status'][$name] = array(
+      '#type' => 'checkbox',
+      '#title' => $client['title'],
+      '#default_value' => $status,
+      '#parents' => array_merge($parents_for_clients, array($name, 'status')),
+    );
+    if ($status) {
+      $enabled_clients++;
+    }
+  }
+
+  if ($enabled_clients) {
+    $element['settings']['clients']['status']['status-warning']['#attributes']['class'][] = 'element-hidden';
+  }
+
+  // Client order (tabledrag).
+  $client_order_wrapper_id = drupal_html_id($element['#id'] . '-clients-order-wrapper');
+  $client_order_tabledrag_id = drupal_html_id($element['#id'] . '-clients-order-table');
+  $element['settings']['clients']['order'] = array(
+    '#type' => 'item',
+    '#title' => t('Client order'),
+    '#theme' => 'authcache_p13n_config_client_order',
+    '#id' => $client_order_wrapper_id,
+    '#tabledrag_id' => $client_order_tabledrag_id,
+    '#description' => t('Set client precedence by moving preferred client modules to the top. If more than one client module is capable of handling markup substitution the one ranking the highest is used.'),
+  );
+  foreach ($client_info as $name => $client) {
+    $weight = empty($clients[$name]['weight']) ? 0 : $clients[$name]['weight'];
+    $element['settings']['clients']['order'][$name]['client'] = array(
+      '#markup' => $client['title'],
+    );
+    $element['settings']['clients']['order'][$name]['weight'] = array(
+      '#type' => 'weight',
+      '#title' => t('Weight for @title', array('@title' => $client['title'])),
+      '#title_display' => 'invisible',
+      '#delta' => 50,
+      '#default_value' => $weight,
+      '#parents' => array_merge($parents_for_clients, array($name, 'weight')),
+    );
+    $element['settings']['clients']['order'][$name]['#weight'] = $weight;
+  }
+
+  $element['settings']['fallback'] = array(
+    '#type' => 'radios',
+    '#title' => t('Fallback'),
+    '#description' => t('What to do when no client is available (neither ESI nor Ajax).'),
+    '#options' => array(
+      'cancel' => t('Cancel caching'),
+      'hide' => t('Hide content'),
+    ),
+    '#default_value' => $element['#default_value']['fallback'],
+  );
+
+  return $element;
+}
+
+/**
+ * Returns HTML for a client order form.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: A render element representing the form.
+ *
+ * @ingroup themeable
+ */
+function theme_authcache_p13n_config_client_order($variables) {
+  $element = $variables['element'];
+
+  // Client order (tabledrag).
+  $rows = array();
+  foreach (element_children($element, TRUE) as $name) {
+    $element[$name]['weight']['#attributes']['class'][] = 'clients-order-weight';
+    $rows[] = array(
+      'data' => array(
+        drupal_render($element[$name]['client']),
+        drupal_render($element[$name]['weight']),
+      ),
+      'class' => array('draggable'),
+    );
+  }
+
+  $id = empty($element['#tabledrag_id']) ? 'clients-order' : $element['#tabledrag_id'];
+  unset($element['#tabledrag_id']);
+
+  $output = drupal_render_children($element);
+  $output .= theme('table', array(
+    'rows' => $rows,
+    'attributes' => array(
+      'id' => $id,
+      'class' => 'clients-order-table'),
+  ));
+  drupal_add_tabledrag($id, 'order', 'sibling', 'clients-order-weight', NULL, NULL, TRUE);
+
+  return $output;
+}
+
+
+/**
+ * Utility: Return the number of seconds the request should be cached.
+ *
+ * @param array $config
+ *   The value produced by the authcache_p13n_config widget.
+ *
+ * @return int
+ *   Number of seconds the request should be cached
+ */
+function authcache_p13n_config_cache_maxage($config) {
+  $ttl = !empty($config['lifespan']) ? $config['lifespan'] : 0;
+
+  if ('custom' == (string) $ttl) {
+    $ttl = $config['lifespan_custom'];
+  }
+
+  return $ttl;
+}
+
+
+/**
+ * Utility: Return cache granularity flags.
+ *
+ * @param array $config
+ *   The value produced by the authcache_p13n_config widget.
+ *
+ * @return int
+ *   A combination of cache granularity flags.
+ */
+function authcache_p13n_config_cache_granularity($config) {
+  $result = 0;
+
+  if (!empty($config['peruser'])) {
+    $result |= AuthcacheP13nCacheGranularity::PER_USER;
+  }
+
+  if (!empty($config['perpage'])) {
+    $result |= AuthcacheP13nCacheGranularity::PER_PAGE;
+  }
+
+  return $result;
+}
+
+
+/**
+ * @} End of "defgroup authcache_p13n_config"
+ */

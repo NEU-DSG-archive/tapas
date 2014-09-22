@@ -1,0 +1,25 @@
+<?php
+// $Id: regcode_dynamic.install,v 1.1.2.1 2010/03/07 14:56:04 aidan Exp $
+
+/**
+ * @file
+ * Installation functions
+ */
+
+
+/**
+ * Implements hook_install().
+ */
+function regcode_dynamic_install() {
+
+  // We want this module to run before the regcode module
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("UPDATE {system} SET weight=-1 WHERE name='regcode_dynamic' AND type='module'") */
+  db_update('system')
+  ->fields(array(
+    'weight' => -1,
+  ))
+  ->condition('name', 'regcode_dynamic')
+  ->condition('type', 'module')
+  ->execute();
+}

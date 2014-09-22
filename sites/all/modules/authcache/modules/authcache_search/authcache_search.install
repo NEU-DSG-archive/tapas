@@ -1,0 +1,12 @@
+<?php
+/**
+ * @file
+ * Install and update hooks for Authcache Search module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function authcache_search_uninstall() {
+  variable_del('authcache_search_notoken_roles');
+}

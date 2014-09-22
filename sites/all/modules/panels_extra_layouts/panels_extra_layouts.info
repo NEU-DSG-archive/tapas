@@ -1,0 +1,18 @@
+name = Panels Extra Layouts 
+description = Additional layouts for the Panels module.
+package = Panels
+php = 5.2
+core = 7.x
+dependencies[] = panels
+files[] = panels_extra_layouts.module
+;;; Local Variables:
+;;; mode: conf
+;;; coding: utf-8
+;;; End:
+
+; Information added by drupal.org packaging script on 2012-12-13
+version = "7.x-1.5+2-dev"
+core = "7.x"
+project = "panels_extra_layouts"
+datestamp = "1355361975"
+

@@ -1,0 +1,26 @@
+name = Timeline Map
+description = This module uses Timemap Google API. It allows you to load one or more datasets onto both a map and a timeline simultaneously. Only items in the visible range of the timeline are displayed on the map.
+dependencies[] = views
+dependencies[] = date_api
+package = Data visualization
+core = 7.x
+php = 5.1
+
+files[] = timelinemap.module
+files[] = timelinemap.views.inc
+files[] = timelinemap-view-timelinemap.tpl.php
+files[] = timelinemap_plugin_style_timelinemap.inc
+files[] = timelinemap.views.inc
+files[] = timelinemap.theme.inc
+
+
+
+
+
+
+; Information added by drupal.org packaging script on 2012-09-10
+version = "7.x-1.0-rc2"
+core = "7.x"
+project = "timelinemap"
+datestamp = "1347284355"
+

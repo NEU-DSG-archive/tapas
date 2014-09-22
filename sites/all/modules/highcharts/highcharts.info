@@ -1,0 +1,11 @@
+name = Highcharts
+description = Highcharts for Drupal
+core = 7.x
+files[] = highcharts.options.inc
+
+; Information added by drupal.org packaging script on 2013-09-30
+version = "7.x-2.x-dev"
+core = "7.x"
+project = "highcharts"
+datestamp = "1380581902"
+

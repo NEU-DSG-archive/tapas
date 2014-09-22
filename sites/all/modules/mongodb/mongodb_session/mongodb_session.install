@@ -1,0 +1,52 @@
+<?php
+/**
+ * @file
+ * Install file.
+ */
+
+/**
+ * Update users to ensure their roles are saved to the user collection.
+ *
+ * Changes made to the session ensure that roles are saved to user accounts.
+ * However, user accounts may not have been stored with roles prior to this
+ * change and therefore those users will encounter access denied messages.
+ * This update will resave accounts with roles to ensure users have proper
+ * access.
+ */
+function mongodb_session_update_7101(&$sandbox) {
+  // Initialize the batch process.
+  if (!isset($sandbox['progress'])) {
+    $sandbox['progress'] = 0;
+    $sandbox['query']['_id']['$gt'] = 0;
+  }
+
+  // Get a user account to update.
+  $uids = mongodb_collection('fields_current', 'user')
+    ->find($sandbox['query'], array('_id' => 1))
+    ->sort(array('_id' => 1))
+    ->limit(1);
+
+  // Break point if we run out of users to work on.
+  $continue = $uids->hasNext();
+
+  // Perform the user update.
+  foreach ($uids as $uid) {
+    if (isset($uid['_id'])) {
+
+      $user = user_load($uid['_id']);
+      if ($user) {
+        user_save($user);
+      }
+      $sandbox['query']['_id']['$gt'] = $uid['_id'];
+
+    }
+    $sandbox['progress']++;
+  }
+
+  $sandbox['#finished'] = 0;
+  // If we hit the count or run out of users, then stop.
+  if (!$continue) {
+    $sandbox['#finished'] = 1;
+    return t('%num user accounts were updated.', array('%num' => $sandbox['progress']));
+  }
+}

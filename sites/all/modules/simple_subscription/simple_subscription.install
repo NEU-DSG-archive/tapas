@@ -1,0 +1,17 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Install, update and uninstall functions for the simple_subscription module.
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function simple_subscription_uninstall() {
+  /*
+   * delete the created variable
+   */
+  variable_del('simple_subscription_config');
+}

@@ -1,0 +1,113 @@
+<?php
+
+
+/**
+ * @file Transformers Actions.
+ */
+
+/**
+ * This is a getter callback for the value from csv metadata.
+ * The functions returns the entry corresponding to the called column, which
+ * is only metadata.
+ * So if for example <em>csv:1:firstColumn</em> is called it will search for
+ * the data for the collumn <em>firstColumn</em>.
+ */
+function transformers_actions_metadata_wrapper_csv_getter($data, $options, $name, $data_type, $info) {
+  if (entity_metadata_verify_data_type($data, $data_type)) {
+    $csv_info =  $info['parent']->getPropertyInfo();
+    $column_key = array_keys($csv_info);
+    $index = array_search($name, $column_key, TRUE);
+    return $data[$index];
+  }
+}
+
+/**
+ * This is a getter callback for the value from a xml metadata.
+ */
+function transformers_actions_metadata_wrapper_xml_getter($data, $options, $name, $data_type, $info) {
+  if (entity_metadata_verify_data_type($data, $data_type)) {
+    $xml_info = $info['parent']->info();
+    $return = NULL;
+    $xml_info['property info'][$name]['metatype'];
+
+    switch ($xml_info['property info'][$name]['metatype']) {
+      case 'Attribute':
+        $return = $data->attributes->getNamedItem($name)->value;
+        break;
+      case 'Text':
+        $return = trim($data->textContent);
+        break;
+    }
+  }
+  return $return;
+}
+
+/**
+ * UI for metadata.
+ */
+class TransformersActionsMetadataUI extends RulesDataUIText {
+  /**
+   * Returns an array of options to use with a select for the items specified
+   * in the given hook.
+   */
+  public static function getOptions($hook) {
+    $sorted_data = array();
+    $data = rules_fetch_data($hook);
+    foreach ($data as $name => $set) {
+      $sorted_data[$name] = $set['label'];
+    }
+    asort($sorted_data);
+    return $sorted_data;
+  }
+
+  /**
+   * Overides
+   * metatypes: This additional flag allows you show an third text input form
+   * where users can define where to get the data from. If you have a xml data
+   * structure, for example, the wrapper function needs to know where to get
+   * the data from(attribute or text node).
+   */
+  public static function inputForm($name, $info, $settings, RulesPlugin $element) {
+    $options = RulesPluginUI::getOptions('data_info');
+    for ($i=0; $i<=2; $i++) {
+      $form[$name][$i] = array(
+        '#type' => 'fieldset',
+        '#title' => t('@index. column', array('@index' => $i+1)),
+        '#collapsible' => FALSE,
+      );
+      $form[$name][$i]['type'] = array(
+        '#type' => 'select',
+        '#title' => t('Data type'),
+        '#options' => array(0 => '--') + $options,
+        '#default_value' => (isset($settings[$name][$i]['type']) ? $settings[$name][$i]['type'] : 0),
+      );
+      $form[$name][$i]['label'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Label'),
+        '#default_value' => (isset($settings[$name][$i]['label']) ? $settings[$name][$i]['label'] : ''),
+      );
+      if (!empty($info['metatypes'])) {
+        $form[$name][$i]['metatype'] = array(
+          '#type' => 'textfield',
+          '#title' => t('Metatype'),
+          '#default_value' => (isset($settings[$name][$i]['metatype']) ? $settings[$name][$i]['metatype'] : ''),
+        );
+      }
+    }
+    return $form;
+  }
+
+  public static function render($value) {
+  }
+}
+
+/**
+ * Converts a DomNodeList to an array.
+ */
+function transformers_actions_nodelist2array(DOMNodeList $nodelist) {
+  $array = array();
+  foreach ($nodelist as $item) {
+    $array[] = $item;
+  }
+  return $array;
+}

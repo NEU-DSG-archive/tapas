@@ -1,0 +1,160 @@
+<?php
+/**
+ * @file
+ * Module file for z_apachesolr_realtime
+ */
+
+/**
+ * Implements hook_entity_insert().
+ */
+function z_apachesolr_realtime_entity_insert($entity, $type) {
+  if ($type == 'node') {
+//ADDED Commented out due to use of multistep for indexable nodes. We should not need to index after insert, only after an update
+//    z_apachesolr_realtime_index_now($entity, $type);
+//END
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function z_apachesolr_realtime_entity_update($entity, $type) {
+  if ($type == 'node') {
+//ADDED to avoid indexing multiple times due to multistep and/or multiple node_save calls on tei content
+	  if($entity->type=='collection' || $entity->type=='group'){
+//END
+//ADDED from https://drupal.org/files/issues/entity-update-clear-cache.patch in regard to https://drupal.org/node/2138405
+    // Clear the static loading cache.
+    entity_get_controller('node')->resetCache(array($entity->nid));
+//END
+    z_apachesolr_realtime_index_now($entity, $type);
+//ADDED to avoid indexing multiple times due to multistep and/or multiple node_save calls on tei content
+  }
+//END
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function z_apachesolr_realtime_entity_delete($entity, $type) {
+  // Obtain the Solr environment.
+  $env_id = apachesolr_default_environment();
+
+  // Extract entity id for Solr.
+  $ids = entity_extract_ids($type, $entity);
+  $id = $ids[0];
+
+  // Delete the entity from the Solr index.
+  apachesolr_remove_entity($env_id, $type, $id);
+
+  // Commit the changes immediately.
+  z_apachesolr_realtime_commit();
+}
+
+/**
+ * Prepare entity as document for adding to Solr index.
+ *
+ * @param object $entity
+ *   Entity and its fields.
+ *
+ * @param string $type
+ *   The type of entity.
+ */
+function z_apachesolr_realtime_index_now($entity, $type) {
+  $env_id = apachesolr_default_environment();
+  $indexable_bundles = apachesolr_get_index_bundles($env_id, $type);
+
+  // Check if entity should be indexed as defined in apachesolr configuration.
+  $info = entity_get_info($type);
+  if (!empty($info['entity keys']['bundle'])) {
+    $bundle = $entity->{$info['entity keys']['bundle']};
+  }
+  else {
+    $bundle = $type;
+  }
+
+  if (!in_array($bundle, $indexable_bundles)) {
+    return;
+  }
+
+  // Entity should be indexed, so send it to solr.
+  $ids = entity_extract_ids($type, $entity);
+  $id = $ids[0];
+
+  // Create entity Object and assign type and id.
+  $item = new stdClass();
+  $item->entity_type = $type;
+  $item->entity_id = $id;
+
+  // Include apachesolr.index from apachesolr module.
+  module_load_include('inc', 'apachesolr', 'apachesolr.index');
+  // Prepeare entity as document and send to solr.
+  $doc = apachesolr_index_entity_to_documents($item, $env_id);
+//ADDED. keep getting error on bulk delete as $doc is boolean
+  if(is_array($doc)){
+//END
+  apachesolr_index_send_to_solr($env_id, $doc);
+
+  // Commit the changes immediately.
+  z_apachesolr_realtime_commit();
+//drupal_set_message('i really did fire');
+//ADDED. keep getting error on bulk delete as $doc is boolean
+  }
+//END
+}
+
+/**
+ * Commit Solr index making the document available.
+ */
+function z_apachesolr_realtime_commit() {
+  $env_id = variable_get('apachesolr_default_environment', 'solr');
+  $server = apachesolr_environment_load($env_id);
+  $solr_version = z_apachesolr_realtime_solrversion();
+  $url = $server['url'] . "/update";
+  // If Solr 4 perform softCommit.
+  if ($solr_version == '4') {
+    $url .= '?commit=true&softCommit=true';
+  }
+  else {
+    $url .= '?commit=true';
+  }
+
+  $result = drupal_http_request($url);
+
+  if ($result->code != 200 || !empty($result->error)) {
+    $commit_time = date('r');
+    watchdog('Apachesolr Realtime', 'Commit at %commit_time failed. Solr will commit at the next interval.', array(
+      '%commit_time' => $commit_time,
+    ), WATCHDOG_WARNING);
+    drupal_set_message(t('Commit at @commit_time failed. Solr will commit at the next interval.'), array(
+      '@commit_time' => $commit_time,
+    ), 'warning');
+  }
+}
+
+/**
+ * Detects Solr Version.
+ *
+ * @return
+ *  returns solr versions of 4,3,1 or Not recognized!
+ */
+function z_apachesolr_realtime_solrversion() {
+  $env_id = apachesolr_default_environment();
+  $solr = apachesolr_get_solr($env_id);
+  // Get Solr version.
+  $systeminfo = $solr->getSystemInfo()->lucene->{'solr-spec-version'};
+  if (preg_match("/^(4.\\d)/", $systeminfo)) {
+    $solr_version = '4';
+  }
+  else if (preg_match("/^(3.\\d)/", $systeminfo)) {
+    $solr_version = '3';
+  }
+  else if (preg_match("/^(1.\\d)/", $systeminfo)) {
+    $solr_version = '1';
+  }
+  else {
+    $solr_version = "Not recognized!";
+  }
+  return $solr_version;
+}

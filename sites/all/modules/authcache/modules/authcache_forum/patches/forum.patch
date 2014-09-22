@@ -1,0 +1,15 @@
+diff --git a/modules/forum/forum-submitted.tpl.php b/modules/forum/forum-submitted.tpl.php
+index 18fea8f..a9f7a56 100644
+--- a/modules/forum/forum-submitted.tpl.php
++++ b/modules/forum/forum-submitted.tpl.php
+@@ -20,8 +20,8 @@
+ ?>
+ <?php if ($time): ?>
+   <span class="submitted">
+-  <?php print t('By !author @time ago', array(
+-    '@time' => $time,
++  <?php print t('By !author !time ago', array(
++    '!time' => $time,
+     '!author' => $author,
+     )); ?>
+   </span>

@@ -1,0 +1,15 @@
+name = Z Apache Solr Access
+description = "Integrates node access and other permissions with Apache Solr search<br/><b>Z was added for weight as node access permissions were not updated correctly. Tried weight with standard mods but didn't work. Could also try these methods - https://drupal.org/node/110238 - but this works and there are other modifications anyway.</b>"
+dependencies[] = apachesolr
+package = Search Toolkit
+core = 7.x
+
+files[] = z_apachesolr_access.module
+files[] = tests/z_apachesolr_access.test
+
+; Information added by drupal.org packaging script on 2013-06-15
+version = "7.x-1.3+3-dev"
+core = "7.x"
+project = "apachesolr"
+datestamp = "1371256413"
+

@@ -1,0 +1,19 @@
+#views-exposed-form-views-custom-filter-page div.throbber {
+  display: block;
+}
+#views-exposed-form-views-custom-filter-page .ajax-progress {
+  display: block;
+  position: absolute;
+  z-index: 10;
+}
+#views-exposed-form-views-custom-filter-page .ajax-progress .throbber {
+  display: block;
+}
+#views-exposed-form-views-custom-filter-page .ajax-progress .message {
+  display: block;
+  font-size: 0.8em;
+  padding-top: 0.3em;
+}
+#views-preview-wrapper .container-inline {
+  padding-top: 0;
+}

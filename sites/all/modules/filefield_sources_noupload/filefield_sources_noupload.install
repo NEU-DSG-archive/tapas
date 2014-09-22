@@ -1,0 +1,19 @@
+<?php
+/**
+ * @file
+ * Update and install functions for FileField Sources Disable Upload.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function filefield_sources_noupload_install() {
+  cache_clear_all();
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function filefield_sources_noupload_uninstall() {
+  cache_clear_all();
+}

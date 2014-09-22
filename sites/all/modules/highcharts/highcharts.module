@@ -1,0 +1,212 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations and API functions for Highcharts.
+ */
+
+/**
+ * Implements hook_library().
+ *
+ * @todo add global configuration for Highcharts theme and exporting plugin.
+ */
+function highcharts_library() {
+  $libraries = array();
+
+  // Main Highcharts library.
+  $path = module_exists('libraries') ? libraries_get_path('highcharts') : 'sites/all/libraries/highcharts';
+  $common = array(
+    'website' => 'http://www.highcharts.com',
+    'version' => '2.3.5',
+  );
+  $dependency = array(
+    'dependencies' => array(
+      array('highcharts', 'highcharts-library'),
+    ),
+  );
+  $libraries['highcharts-library'] = array(
+    'title' => 'Highcharts library',
+    'js' => array($path . '/js/highcharts.js' => array()),
+  ) + $common;
+
+  // Theme.
+  $libraries['highcharts-theme'] = array(
+    'title' => 'Highcharts theme',
+    'js' => array($path . '/js/themes/' . variable_get('highcharts_theme', 'default') . '.js' => array()),
+  ) + $common + $dependency;
+
+  // Exporting plugin.
+  $libraries['highcharts-exporting'] = array(
+    'title' => 'Highcharts exporting plugin',
+    'js' => array($path . '/js/modules/exporting.js' => array()),
+  ) + $common + $dependency;
+
+  // Highcharts module Drupal behaviors.
+  $libraries['highcharts-behaviors'] = array(
+    'title' => 'Highcharts behaviors',
+    'website' => 'http://drupal.org/project/highcharts',
+    'version' => '7.x-2.x',
+    'js' => array(
+      drupal_get_path('module', 'highcharts') . '/js/highcharts.js' => array(
+        'scope' => 'footer',
+      ),
+    ),
+  ) + $dependency;
+
+  return $libraries;
+}
+
+/**
+ * Renders a highchart.
+ *
+ * @param object $options
+ *   A highcharts options object. Note methods are specially returned by
+ *   highcharts_get_methods() via hook_highcharts_methods_alter(). See the
+ *   @link http://api.highcharts.com Highcharts reference. @endlink
+ * @param array $attributes
+ *   An HTML $attributes array passed to theme_highcharts_chart(), to which will
+ *   be added:
+ *   - id: A unique ID for matching JS settings to the themed chart container.
+ *   - style: Default: 'margin 0 auto;' is appended to any existing style.
+ *   - class: Default: 'highcharts-chart' is appended to any existing class.
+ *
+ * @return string
+ *   The chart container div, ready for highcharts behavior rendering.
+ */
+function highcharts_render($options, $attributes = array()) {
+  // Generate and add a unique chart ID to the options object. We should not
+  // need to use drupal_html_id() here.
+  $chart_id = 'highcharts_' . uniqid();
+  $options->chart->renderTo = $chart_id;
+
+  // Merge in Chart container default attributes.
+  $attributes = array_merge_recursive($attributes, array(
+    'id' => $chart_id,
+    'style' => array('margin: 0 auto;'),
+    'class' => array('highcharts-chart'),
+  ));
+
+  // Render HTML for a highcharts container.
+  $container = array(
+    '#attributes' => $attributes,
+    '#type' => 'container',
+    '#attached' => array(
+      'library' => array(
+        // Add highcharts behaviors as defined in hook_library(). This allows us
+        // to leverage the entire Highcharts library API without needing to
+        // account for each option separately. This also loads the Highcharts JS
+        // library as a dependency.
+        array('highcharts', 'highcharts-behaviors'),
+      ),
+      'js' => array(
+        // JavaScript settings for this chart. Replaces highcharts_settings().
+        array(
+          'type' => 'setting',
+          'data' => array('highcharts' => array($chart_id => $options)),
+        ),
+      ),
+    ),
+  );
+
+  // Highcharts theme.
+  if (variable_get('highcharts_theme', 'default') != 'default') {
+    $container['#attached']['library'][] = array('highcharts', 'highcharts-theme');
+  }
+
+  // Exporting plugin.
+  if (variable_get('highcharts_exporting', FALSE)) {
+    $container['#attached']['library'][] = array('highcharts', 'highcharts-exporting');
+  }
+
+  // Add highchart options object methods inline. Methods don't work when passed
+  // through JavaScript settings, becasue they are converted to strings.
+  $js = '';
+  $element = clone $options;
+  foreach (array_unique(highcharts_get_methods($options)) as $method) {
+    if ($callback = highcharts_get_method_from_string($method, $element)) {
+      // Fomat inline faux settings for this chart. Since this is in the footer,
+      // we can re-use `Drupal.settings` since we know it has been initialized.
+      $js .= "Drupal.settings.highcharts.{$chart_id}.{$method} = $callback;";
+    }
+  }
+  if (!empty($js)) {
+    $container['#attached']['js'][$js] = array(
+      'type' => 'inline',
+      'scope' => 'footer',
+    );
+  }
+
+  return drupal_render($container);
+}
+
+/**
+ * Gets a list of Highcharts options object methods.
+ *
+ * Currently there is no (reliable) way to programmatically determine which
+ * options are `Function` types, so for now we will support individual options
+ * explicitly, and provide a hook allowing other modules to add to this list.
+ *
+ * Note that since this injects JavaScript into the footer, there is no way to
+ * protect against an exploitation except that we limit control to modules
+ * (which could do much worse without our help). We therefore take these
+ * definitions at face value.
+ *
+ * @param object $options
+ *   A highcharts options object.
+ *
+ * @return array
+ *   An indexed array JavaScript object dot notation strings, corresponding to
+ *   highchart options, which will be run as methods.
+ *
+ * @todo Remove this when the Highcharts API allows us to determine the options
+ *   type programmatically.
+ *
+ *   Currently the only way to get this definition would be to parse the
+ *   Highcharts API reference website. However that is currently built manually
+ *   which makes that option both undesirable and unreliable.
+ *
+ *   The Highsoft developers informed us they have a project in development to
+ *   supply a programmatic interface to the options, however it is not yet ready
+ *   for public use - when it is, we'll use it!
+ */
+function highcharts_get_methods($options) {
+  $methods = array();
+
+  // Explicitly support specific options that we know expect callback functions.
+  $methods[] = 'tooltip.formatter';
+
+  // Allow other modules to specify that additional options expect callbacks.
+  drupal_alter('highcharts_methods', $methods, $options);
+
+  return $methods;
+}
+
+/**
+ * Gets a PHP object element value from a JavaScript object string of the same
+ * structure.
+ *
+ * @param string $js_object
+ *   A JavaScript object dot notation string.
+ * @param object|string $element
+ *   By reference. A matching element of a nested PHP object.
+ *
+ * @return string|false
+ *   The matching php object element value string, or FALSE.
+ */
+function highcharts_get_method_from_string($js_object, &$element) {
+  $keys = explode('.', $js_object);
+
+  while ($key = array_shift($keys)) {
+    if (isset($element->$key)) {
+      // The element exists.
+      $element = &$element->$key;
+    }
+    else {
+      // The element does not exist.
+      return FALSE;
+    }
+  }
+
+  // Return the element only if it is a string.
+  return is_string($element) ? $element : FALSE;
+}

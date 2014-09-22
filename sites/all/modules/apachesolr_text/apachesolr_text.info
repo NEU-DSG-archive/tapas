@@ -1,0 +1,5 @@
+name = Apache Solr text indexing
+description = Enables text indexing for the Apache Solr search module. Caution is required since this can drastically enlarge your solr index
+core = 7.x
+package = Search Toolkit
+dependencies[] = apachesolr

@@ -1,0 +1,267 @@
+<?php
+
+/**
+ * @file
+ * Default theme implementation for displaying a single search result.
+ *
+ * This template renders a single search result and is collected into
+ * search-results.tpl.php. This and the parent template are
+ * dependent to one another sharing the markup for definition lists.
+ *
+ * Available variables:
+ * - $url: URL of the result.
+ * - $title: Title of the result.
+ * - $snippet: A small preview of the result. Does not apply to user searches.
+ * - $info: String of all the meta information ready for print. Does not apply
+ *   to user searches.
+ * - $info_split: Contains same data as $info, split into a keyed array.
+ * - $module: The machine-readable name of the module (tab) being searched, such
+ *   as "node" or "user".
+ * - $title_prefix (array): An array containing additional output populated by
+ *   modules, intended to be displayed in front of the main title tag that
+ *   appears in the template.
+ * - $title_suffix (array): An array containing additional output populated by
+ *   modules, intended to be displayed after the main title tag that appears in
+ *   the template.
+ *
+ * Default keys within $info_split:
+ * - $info_split['type']: Node type (or item type string supplied by module).
+ * - $info_split['user']: Author of the node linked to users profile. Depends
+ *   on permission.
+ * - $info_split['date']: Last update of the node. Short formatted.
+ * - $info_split['comment']: Number of comments output as "% comments", %
+ *   being the count. Depends on comment.module.
+ *
+ * Other variables:
+ * - $classes_array: Array of HTML class attribute values. It is flattened
+ *   into a string within the variable $classes.
+ * - $title_attributes_array: Array of HTML attributes for the title. It is
+ *   flattened into a string within the variable $title_attributes.
+ * - $content_attributes_array: Array of HTML attributes for the content. It is
+ *   flattened into a string within the variable $content_attributes.
+ *
+ * Since $info_split is keyed, a direct print of the item is possible.
+ * This array does not apply to user searches so it is recommended to check
+ * for its existence before printing. The default keys of 'type', 'user' and
+ * 'date' always exist for node searches. Modules may provide other data.
+ * @code
+ *   <?php if (isset($info_split['comment'])): ?>
+ *     <span class="info-comment">
+ *       <?php print $info_split['comment']; ?>
+ *     </span>
+ *   <?php endif; ?>
+ * @endcode
+ *
+ * To check for all available data within $info_split, use the code below.
+ * @code
+ *   <?php print '<pre>'. check_plain(print_r($info_split, 1)) .'</pre>'; ?>
+ * @endcode
+ *
+ * @see template_preprocess()
+ * @see template_preprocess_search_result()
+ * @see template_process()
+ *
+ * @ingroup themeable
+ */
+
+/*
+echo "<pre>";
+ print_r($result);
+ print_r($result['snippets']);
+ print_r($result['fields']['path']);
+ print_r($result['bundle']);
+ print_r($result['user']);
+  print_r($result['date']);
+echo "</pre>";
+echo "BREAK";
+*/
+$FIELD_NAMES = array(
+	'tos_name_formatted' => 'Author (TAPAS)',
+	'ts_body' => 'Description',
+	'tm_vid_319_names' => 'Institution(s)',
+	'tm_vid_5_names' => 'Collection',
+	'tm_vid_275_names' => 'Project',
+	'ts_field_dc_title' => 'Title',
+	'ts_field_title' => 'Title for display',
+	'ts_field_dc_alternative' => 'Alternate title',
+//	'tm_vid_236_names' => 'Author Last Name(s) (Source)',
+//	'tm_vid_237_names' => 'Author First Name(s) (Source)',
+//	'tm_vid_242_names' => 'Author Corporate (Source)',
+	'ts_field_dc_creator' => 'Author (Source)',
+	'ts_field_dc_contributor' => 'Contributor',
+	'Location:' => 'Located at',
+	'tm_vid_266_names' => 'Geographical Region',
+	'ts_field_dc_date_display' => 'Date of publication',
+	'DC Publisher:' => 'Published by',
+	'tm_vid_539_names' => 'Language',
+	'DC Rights:' => 'Rights',
+	'Rights Granted Additional Info:' => 'Rights Granted',
+	'ts_field_dc_coverage_temporal_displ' => 'Time Period',
+	'tm_vid_537_names' => 'Classified as',
+	'tm_vid_536_names' => 'Subject (Getty)',
+	'tm_vid_538_names' => 'Subject (Library of Congress)',
+	'tm_vid_232_names' => 'Subject',
+	'tm_vid_233_names' => 'Source',
+	'ts_field_dc_source_full_text' => 'Source',
+	'ts_field_dc_description' => 'Description',
+	'content' => 'Document text'
+);
+global $base_url;
+$the_url = request_uri();
+$get_node=str_replace($base_url.'/', "", $url);
+$get_node=drupal_lookup_path('source',$get_node); 
+$type_id=explode('/',$get_node);
+$type=$type_id[0];
+
+$the_query=parse_url($the_url);
+$the_query=$the_query['query'];
+parse_str($the_query, $query_parts);
+//echo $query_parts['solrsort'];
+
+?> 
+<li class="<?php print $classes; ?>"<?php print $attributes; ?>>
+  <?php print render($title_prefix); ?>
+  <h3 class="title"<?php print $title_attributes; ?>>
+    <a href="<?php print $url; ?>"><?php if ($result['entity_type']=='node'){if(isset($result['fields']['ts_field_title'])){print $result['fields']['ts_field_title'];}else{print $result['fields']['label'];}}else{print $title;} ?></a>
+  </h3>
+  <?php 
+if(isset($type_id[1])){
+$id=$type_id[1];
+  if($type=='node'){
+$node=node_load($id);
+$breadcrumb='';
+if($node->type=='collection'||$node->type=='tei_content'){
+//get OG group node..node_load should someday be replaced with solr data
+$get_og_id=$node->og_group_ref['und'][0]['target_id'];
+$node_og=node_load($get_og_id);
+$breadcrumb="<span class='byline'>A Collection of the <a class='breadcrumb'  href='/node/".$get_og_id."'>".$node_og->field_title['und'][0]['value']."</a> </span>";
+}
+if($node->type=='tei_content'){
+$get_collection_id=$node->field_collection_node_reference['und'][0]['target_id'];
+$node_collection=node_load($get_collection_id);
+$breadcrumb="<span class='byline'>Part of the Collection <a class='breadcrumb'  href='/node/".$get_collection_id."'>".$node_collection->field_title['und'][0]['value']."</a> in the Project <a class='breadcrumb'  href='/node/".$get_og_id."'>".$node_og->field_title['und'][0]['value']."</a> </span>";
+}
+echo $breadcrumb;
+
+if($node->type=='group' || $node->type=='collection' || $node->type=='news'){
+	if($snippet==' ...'){
+	print '<table width=100%><tr><td width=20%><strong>Description</strong></td><td>';
+	if(isset($node->body['und'])){
+	$string = (strlen($node->body['und'][0]['value']) > 103) ? substr($node->body['und'][0]['value'],0,100).'...' : $node->body['und'][0]['value'];
+	print $string;
+	}
+	print '</td></tr></table>';
+	}
+}
+if($node->type=='tei_content'){
+	if($snippet==' ...'){
+	print '<table width=100%><tr><td width=20%><strong>Document Text</strong></td><td>';
+	if(isset($node->field_tei_xml['und'][0]['uri'])){
+	$doc_link=str_replace('public://',$base_url.'/sites/default/files/',$node->field_tei_xml['und'][0]['uri']);
+	$doc_name=$node->field_tei_xml['und'][0]['filename'];
+	$doc_mime=$node->field_tei_xml['und'][0]['filemime'];
+	print '<span class="file"><img class="file-icon" title="application/xml" src="/sites/all/themes/tapas_base/images/icons/application-xml.png" alt="tei-icon"><a type="'.$doc_mime.'" href="'.$doc_link.'">'.$doc_name.'</a></span>';
+	}
+	print '</td></tr></table>';
+	}
+}
+
+}}
+   ?>
+  <div class="search-snippet-info">
+<?php 
+if ($snippet): 
+print '<table width=100%>';
+if(isset($query_parts['solrsort'])){
+print '<tr><td width="20%">';
+if (strpos($query_parts['solrsort'],'sort_field_dc_creator') !== false) {
+	if(isset($node->field_dc_creator['und'][0]['value'])){
+	print "<label>Author (Source)</label></td><td>".$node->field_dc_creator['und'][0]['value'];
+	}
+}
+if (strpos($query_parts['solrsort'],'ds_created') !== false) {
+	if(isset($node->created)){
+	$date_created = date("F j, Y g:i a",$node->created);
+	print "<label>Date Created (TAPAS)</label></td><td>".$date_created." EST";
+	}
+}
+if (strpos($query_parts['solrsort'],'ds_changed') !== false) {
+	if(isset($node->changed)){
+	$date_modified = date("F j, Y g:i a",$node->changed);
+	print "<label>Date Modified (TAPAS)</label></td><td>".$date_modified." EST";
+	}
+}
+if (strpos($query_parts['solrsort'],'ds_field_dc_date') !== false) {
+	if(isset($node->field_dc_date['und'][0]['value'])){
+	$date_source = date("F j, Y g:i a",strtotime($node->field_dc_date['und'][0]['value']));
+	print "<label>Publication Date (Source)</label></td><td>".$date_source." EST";
+	}
+}
+if (strpos($query_parts['solrsort'],'sort_name_lf_formatted') !== false) {
+	if(isset($node->uid)){
+	$the_user=user_load($node->uid);
+	print "<label>Author (TAPAS)</label></td><td>".$the_user->realname;
+	}
+}
+if (strpos($query_parts['solrsort'],'dds_field_dc_coverage_temporal_start') !== false || strpos($query_parts['solrsort'],'dds_field_dc_coverage_temporal_end') !== false) {
+	if(isset($node->field_dc_coverage_temporal['und'][0]['value'])&&isset($node->field_dc_coverage_temporal['und'][0]['value2'])){
+	$coverage_date_start = date("Y",strtotime($node->field_dc_coverage_temporal['und'][0]['value']));
+	$coverage_date_end = date("Y",strtotime($node->field_dc_coverage_temporal['und'][0]['value2']));
+	$coverage_date = $coverage_date_start." to ".$coverage_date_end;
+	print "<label>Time Period</label></td><td>".$coverage_date;
+	}
+}
+print '</td></tr>';
+}
+
+//	if($the_url!='/search/site?f[0]=bundle%3Acollection' && !$the_url=='/search/site?f[0]=bundle%3Agroup'){
+		//print_r($result);
+	while($hits = current($result['snippets'])) {
+		$hits_label=key($result['snippets']);
+		$has_label_changed='';
+		$new_label='';
+		//print_r($the_url);
+//		if($the_url!='/search/site?f[0]=bundle%3Acollection' || $the_url!='/search/site?f[0]=bundle%3Acollection'){
+		foreach($hits as $hit_label=>$hit_value){
+			if($hit_value==''||strpos($hit_value,'<strong>') === false){
+				if(!strpos($the_url,'search/site/?') === false){
+					if($snippet!=' ...'){
+//						print $snippet;
+					}
+					if(isset($node->body)){
+						$description=$node->body['und'][0]['value'];
+					}
+				}
+			}else{
+				if($FIELD_NAMES[$hits_label]!="Document text"||$node->type=='tei_content'){
+				print '<tr>';
+				if($result['entity_type']=='node'){
+					print '<td width=20%>';
+					if($hits_label!=$has_label_changed){
+						print '<label>'.$FIELD_NAMES[$hits_label].'</label>';
+						$new_label='';
+					}else{
+						$new_label='...<br/>';
+					}
+					print '</td>';
+					$has_label_changed=$hits_label;
+				}
+				print '<td>';
+				print '<value>'.$new_label.$hit_value.'</value>';
+				print '</td>';
+				print '</tr>';
+				}
+			}
+		}
+		
+	next($result['snippets']);
+	}
+	print '</table>';
+      /*<p class="search-snippet"<?php print $content_attributes; ?>><?php print $snippet; ?></p>
+    <?php if ($info): ?>
+      <p class="search-info"><?php print $info; ?></p>
+    <?php endif; ?>
+   */?>
+    <?php endif;?>
+  </div>
+</li>

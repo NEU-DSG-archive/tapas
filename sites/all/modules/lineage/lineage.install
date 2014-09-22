@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Taxonomy Lineage module.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function lineage_schema() {
+  $schema['taxonomy_term_lineage'] = array(
+    'fields' => array(
+      'tid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'lineage' => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+      'depth' => array('type' => 'int', 'not null' => TRUE, 'default' => 0)
+    ),
+    'indexes' => array(
+      'lineage' => array('lineage')
+    ),
+    'primary key' => array('tid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Rename the lineage table to be similar to other Drupal 7 taxonomy table names.
+ */
+function lineage_update_7000() {
+  db_rename_table('term_lineage', 'taxonomy_term_lineage');
+  return t('Changed the lineage data table name to <em>taxonomy_term_lineage</em>.');
+}

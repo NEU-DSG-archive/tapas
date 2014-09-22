@@ -1,0 +1,17 @@
+name = "Openlayers Solr"
+description = "Openlayers integration with Solr Search"
+core = 7.x
+
+; Core files
+files[] = openlayers_solr.module
+
+dependencies[] = openlayers
+dependencies[] = apachesolr_search
+dependencies[] = apachesolr
+
+; Information added by drupal.org packaging script on 2013-10-01
+version = "7.x-1.1+1-dev"
+core = "7.x"
+project = "openlayers_solr"
+datestamp = "1380620967"
+

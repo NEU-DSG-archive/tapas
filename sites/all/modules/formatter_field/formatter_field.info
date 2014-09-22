@@ -1,0 +1,10 @@
+name = Formatter Field
+core = 7.x
+dependencies[] = field
+
+; Information added by drupal.org packaging script on 2012-06-13
+version = "7.x-1.0-beta4+1-dev"
+core = "7.x"
+project = "formatter_field"
+datestamp = "1339546582"
+

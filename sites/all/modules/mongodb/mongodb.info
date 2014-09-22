@@ -1,0 +1,13 @@
+name = MongoDB
+description = Integration between Drupal and MongoDB.
+package = MongoDB
+core = 7.x
+files[] = mongodb.module
+files[] = mongodb.install
+
+; Information added by drupal.org packaging script on 2013-10-26
+version = "7.x-1.0-rc2+18-dev"
+core = "7.x"
+project = "mongodb"
+datestamp = "1382751121"
+

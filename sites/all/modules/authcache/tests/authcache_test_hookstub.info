@@ -1,0 +1,14 @@
+name = "Authcache Test HookStub"
+description = "HookStub class"
+package = Testing
+core = 7.x
+hidden = TRUE
+php = 5.3
+files[] = HookStub.inc
+
+; Information added by drupal.org packaging script on 2013-10-16
+version = "7.x-2.0-alpha4+23-dev"
+core = "7.x"
+project = "authcache"
+datestamp = "1381882731"
+

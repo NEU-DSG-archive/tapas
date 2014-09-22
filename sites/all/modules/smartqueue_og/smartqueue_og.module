@@ -1,0 +1,248 @@
+<?php
+
+/**
+ * Implements hook_nodequeue_info().
+ */
+function smartqueue_og_nodequeue_info() {
+  return array(
+    'smartqueue_og' => array(
+      'title' => t('OG queue'),
+      'description' => t('Each OG group has its own unique subqueue. You can place nodes into any of these subqueues based on which OG groups that node belongs to.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_nodequeue_form().
+ */
+function smartqueue_og_nodequeue_form($queue, &$form) {
+  $form['subqueue_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Subqueue title'),
+    '#default_value' => $queue->subqueue_title,
+    '#size' => 50,
+    '#maxlength' => 64,
+    '#description' => t('What to display for the subqueue title; use %subqueue to embed the actual subqueue title. This is used to distinguish multiple nodequeues with subqueues from each other, as internal subqueue title is filled automatically.'),
+  );
+}
+
+/**
+ * Implements hook_nodequeue_form_submit_finish().
+ */
+function smartqueue_og_nodequeue_form_submit_finish($queue, $form_state) {
+  // Check if queue already exists.
+  $qid = db_select('smartqueue', 's')
+    ->fields('s', array('qid'))
+    ->condition('qid', $queue->qid)
+    ->execute()
+    ->fetchField();
+
+  if (!$qid) {
+    // Insert new queue.
+    db_insert('smartqueue')
+      ->fields(array(
+        'qid' => $queue->qid,
+      ))
+      ->execute();
+  }
+  // Add new subqueue for each group.
+  $gids = db_query("SELECT gid FROM {og}")->fetchCol();
+  foreach ($gids as $gid) {
+    $reference = $gid;
+    // We're returning an array of references for efficiency, but we also have
+    // to check to see if the references we've generated exist. If they don't,
+    // we have to create them.
+    $exists = array();
+    $subqueues = nodequeue_load_subqueues_by_reference(array($queue->qid => array($reference)));
+    foreach ($subqueues as $subqueue) {
+      $exists[$subqueue->reference] = TRUE;
+    }
+
+    // Create subqueues if needed.
+    if (empty($exists[$reference])) {
+      nodequeue_add_subqueue($queue, smartqueue_og_nodequeue_subqueue_title($queue, $reference), $reference);
+    }
+  }
+}
+
+/**
+ * Implements hook_nodequeue_subqueues().
+ *
+ * Returns list of references for subqueues that can host a given node.
+ */
+function smartqueue_og_nodequeue_subqueues(&$queue, $node) {
+  $groups = $node->group_audience;
+  if ($groups) {
+    foreach ($groups as $group) {
+      $gids[] = $group['gid'];
+    }
+  }
+  $subqueues = nodequeue_load_subqueues_by_reference(array($queue->qid => $gids));
+
+  return $subqueues;
+}
+
+/**
+ * Build an array of strings that represents all of the possible OG group
+ * combinations.
+ */
+function smartqueue_og_build_string($arrays) {
+  $array = array_shift($arrays);
+  $gid = '';
+  if (empty($arrays)) {
+    return $array;
+  }
+
+  $substrings = smartqueue_og_build_string($arrays);
+  $strings = array();
+
+  foreach ($array as $term) {
+    foreach ($substrings as $string) {
+      $strings[] = "$gid-$string";
+    }
+  }
+
+  return $strings;
+}
+
+/**
+ * Form title for a new taxonomy subqueue.
+ *
+ * @param $queue Queue object.
+ * @param $reference Subqueue reference string (gid).
+ */
+function smartqueue_og_nodequeue_subqueue_title($queue, $reference) {
+  $gid = $reference;
+  $title = og_label($gid);
+  if ($queue->subqueue_title) {
+    $title = str_replace('%subqueue', $title, $queue->subqueue_title);
+  }
+  return $title;
+}
+
+/**
+ * Implements hook_group_update().
+ *
+ * Updates subqueue title if a group name changes.
+ */
+function smartqueue_og_group_update(OgGroup $og_group) {
+  if (!empty($og_group->etid) && !empty($og_group->original->label) && !empty($og_group->label) && $og_group->original->label != $og_group->label) {
+    // Find subqueues that use this group.
+    $result = db_query("SELECT nq.reference AS reference, sq.reference AS sqref, sq.sqid
+      FROM {nodequeue_queue} nq
+      INNER JOIN {nodequeue_subqueue} sq ON nq.qid = sq.qid
+      WHERE nq.owner = 'smartqueue_og'
+      AND sq.reference = :sqref",
+      array(':sqref' => $og_group->etid)
+    )->fetchAll();
+    foreach ($result as $row) {
+      // Note that $row already contains the needed $row->reference.
+      $title = smartqueue_taxonomy_nodequeue_subqueue_title($row, $row->sqref);
+      nodequeue_subqueue_update_title($row->sqid, $og_group->label);
+    }
+  }
+}
+
+/**
+ * Implements hook_group_delete().
+ *
+ * Deletes subqueue if group is removed.
+ */
+function smartqueue_og_group_delete(OgGroup $og_group) {
+  if (!empty($og_group->etid)) {
+    // Find subqueues that use this group.
+    $result = db_query("SELECT nq.reference AS reference, sq.reference AS sqref, sq.sqid
+      FROM {nodequeue_queue} nq
+      INNER JOIN {nodequeue_subqueue} sq ON nq.qid = sq.qid
+      WHERE nq.owner = 'smartqueue_og'
+      AND sq.reference = :sqref",
+      array(':sqref' => $og_group->gid)
+    )->fetchAll();
+    foreach ($result as $row) {
+      nodequeue_remove_subqueue($row->sqid);
+    }
+  }
+}
+
+/**
+ * Implements hook_group_insert().
+ *
+ * Creates subqueues for group nodes.
+ */
+function smartqueue_og_group_insert(OgGroup $og_group) {
+  $node = node_load($og_group->etid);
+  $queues = nodequeue_load_queues(nodequeue_get_all_qids());
+  foreach ($queues as $qid => $queue) {
+    if ($queue->owner == 'smartqueue_og') {
+      $reference = $og_group->gid;
+      nodequeue_add_subqueue($queue, smartqueue_og_nodequeue_subqueue_title($queue, $reference), $reference);
+    }
+  }
+}
+
+/**
+ * Implements hook_og_permission().
+ */
+function smartqueue_og_og_permission() {
+  $items['administer queues'] = array(
+    'title' => t('Administer group nodequeues'),
+    'description' => t('Administer organic group smartqueues for the group'),
+    'default role' => array(OG_ADMINISTRATOR_ROLE),
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_subqueue_access().
+ */
+function smartqueue_og_subqueue_access($subqueue, $account, $queue) {
+  if (og_user_access($subqueue->reference, 'administer queues', $account)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_nodequeue_autocomplete().
+ * Limit autocomplete choices to nodes within the group.
+ */
+function smartqueue_og_nodequeue_autocomplete($queue, $subqueue, $string, $where, $where_args) {
+  $query = db_select('node', 'n')
+    ->addTag('node_access')
+    ->fields('n', array('nid', 'title', 'tnid'))
+    ->range(0, variable_get('nodequeue_autocomplete_limit', 10));
+
+  if (!empty($queue->types)) {
+    $query->condition('n.type', $queue->types, 'IN');
+  }
+  global $user;
+  if (!user_access('administer nodes', $user)) {
+    $query->condition(db_or()->condition('n.status', 1)->condition('n.uid', $user->uid));
+  }
+  // Run a match to see if they're specifying by nid.
+  $preg_matches = array();
+  $match = preg_match('/\[nid: (\d+)\]/', $string, $preg_matches);
+  if (!$match) {
+    $match = preg_match('/^nid: (\d+)/', $string, $preg_matches);
+  }
+
+  if ($match) {
+    // If it found a nid via specification, reduce our resultset to just that nid.
+    $query->condition('n.nid', $preg_matches[1]);
+  }
+  else {
+    // Build the constant parts of the query.
+    $query->where('LOWER(n.title) LIKE LOWER(:string)', array(':string' => '%' . db_like($string) . '%'));
+  }
+  $query->join('field_data_group_audience', 'f', 'f.entity_id = n.nid');
+  $query->condition('f.entity_type', 'node');
+  $query->condition('f.group_audience_gid', $subqueue->reference);
+  $result = $query->execute();
+
+  foreach ($result as $node) {
+    $id = nodequeue_get_content_id($queue, $node);
+    $matches[$node->nid] = check_plain($node->title) . " [nid: $id]";
+  }
+
+  return $matches;
+}

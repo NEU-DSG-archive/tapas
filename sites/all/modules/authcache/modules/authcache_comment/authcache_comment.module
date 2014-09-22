@@ -1,0 +1,164 @@
+<?php
+/**
+ * @file
+ * Provide personalization for the comment module.
+ */
+
+/**
+ * Implements hook_authcache_p13n_assembly().
+ */
+function authcache_comment_authcache_p13n_assembly() {
+  return array(
+    'comment-num-new' => array(
+      'partials' => array(
+        'num-new' => 'AuthcacheCommentNumNewFragment',
+      ),
+      'cache maxage' => 600,
+    ),
+    'comment-view' => array(
+      'partials' => array(
+        'edit' => 'AuthcacheCommentEditFragment',
+        'new' => 'AuthcacheCommentNewFragment',
+      ),
+      'cache maxage' => 600,
+    ),
+  );
+}
+
+/**
+ * Implements hook_authcache_p13n_admin_config().
+ */
+function authcache_comment_authcache_p13n_admin_config() {
+  $configs = array();
+
+  $config = array(
+    'lifespan' => 600,
+  );
+
+  $configs[] = array(
+    'title' => t('Number of new comments'),
+    'group' => t('Comment'),
+    'type' => 'assembly',
+    'id' => 'comment-num-new',
+    'location' => t('Node teaser'),
+    'config' => $config + authcache_p13n_config_defaults(),
+  );
+
+  $configs[] = array(
+    'title' => t('New marker'),
+    'group' => t('Comment'),
+    'type' => 'assembly',
+    'id' => 'comment-view',
+    'location' => t('Comment view'),
+    'config' => $config + authcache_p13n_config_defaults(),
+  );
+
+  return $configs;
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ *
+ * Replace the username in the comment-form with a placeholder.
+ */
+function authcache_comment_form_comment_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
+
+  if ($user->uid && authcache_page_is_cacheable()) {
+    $form['author']['_author']['#markup'] = '<span class="authcache-user"></span>';
+  }
+}
+
+/**
+ * Implements hook_comment_view_alter().
+ *
+ * Hide the number-of-new-comments-link on node teasers.
+ */
+function authcache_comment_node_view_alter(&$build) {
+  global $user;
+
+  if ($user->uid && authcache_page_is_cacheable()) {
+    $node = $build['#node'];
+    if (isset($build['links']['comment']['#links']['comment-comments'])) {
+      // Add partial.
+      $build['links']['comment']['#links']['comment-new-comments'] = array(
+        'title' => theme('authcache_p13n_partial', array(
+          'assembly' => 'comment-num-new',
+          'partial' => 'num-new',
+          'param' => $node->nid,
+        )),
+        'html' => TRUE,
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_comment_view_alter().
+ *
+ * Add replace the edit-link on comments if all of the following conditions are
+ * met:
+ *
+ *   1. Comment is published
+ *   2. A user has the right to edit its own comments
+ *   3. The user does *not* have administer comments permission
+ *
+ * If the logged in user belongs to a role with admin-permission, there is no
+ * need to alter the link. If on the other hand, the user belongs to a role
+ * without 'edit own comments' permission, the link will not be added by
+ * comment_links anyway.
+ *
+ * @see comment_links()
+ * @see comment_access()
+ */
+function authcache_comment_comment_view_alter(&$build) {
+  global $user;
+
+  if ($user->uid && authcache_page_is_cacheable()) {
+    $comment = $build['#comment'];
+
+    if ($comment->status == COMMENT_PUBLISHED && user_access('edit own comments') && !user_access('administer comments')) {
+      // Add partial. Ensure that comment-edit link will always show up in the
+      // same place.
+      unset($build['links']['comment']['#links']['comment-edit']);
+      $build['links']['comment']['#links']['comment-edit'] = array(
+        'title' => theme('authcache_p13n_partial', array(
+          'assembly' => 'comment-view',
+          'partial' => 'edit',
+          'param' => $comment->cid . '-' . $comment->uid,
+        )),
+        'html' => TRUE,
+      );
+    }
+
+    // After a page was cleaned from the cache, the first user requesting it
+    // will trigger a node_tag_new and update its last viewed timestamp.
+    // Therefore we store the timestamp of the last visit in the session and
+    // retrieve it in AuthcacheCommentNewFragment and inject it into the static
+    // cache of the node_last_viewed function there.
+    $_SESSION['authcache_comment_node_last_viewed'] = &drupal_static('node_last_viewed');
+  }
+}
+
+/**
+ * Process comment template variables.
+ *
+ * Replace "new" marker with empty span containing timestamp info
+ * Add "edit" uid span for JS phase
+ *
+ * @see comment.module
+ */
+function authcache_preprocess_comment(&$variables) {
+  global $user;
+
+  if ($user->uid && authcache_page_is_cacheable()) {
+    $comment = $variables['comment'];
+    $node = $variables['node'];
+
+    $variables['new'] = theme('authcache_p13n_partial', array(
+      'assembly' => 'comment-view',
+      'partial' => 'new',
+      'param' => $node->nid . '-' . $comment->changed,
+    ));
+  }
+}

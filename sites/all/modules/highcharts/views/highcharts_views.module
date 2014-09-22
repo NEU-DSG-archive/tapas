@@ -1,0 +1,271 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations and API functions for Highcharts Views integration.
+ */
+
+/**
+ * Implements hook_views_api().
+ */
+function highcharts_views_views_api() {
+  return array(
+    'api' => 3,
+  );
+}
+
+/**
+ * Implements hook_highcharts_views_charts().
+ *
+ * Declare options template classes from highcharts.options.inc which extend
+ * HighchartsOptions.
+ */
+function highcharts_views_highcharts_views_charts() {
+  return array(
+    'ViewsHighchartsOptionsPieBasic' => array(
+      'title' => t('Pie basic'),
+    ),
+    'ViewsHighchartsOptionsBarStacked' => array(
+      'title' => t('Bar stacked'),
+    ),
+    'ViewsHighchartsOptionsBarBasic' => array(
+      'title' => t('Bar basic'),
+    ),
+    'ViewsHighchartsOptionsLineBasic' => array(
+      'title' => t('Line basic'),
+    ),
+  );
+}
+
+/**
+ * Recursively override values in a tree of objects with values in an array tree
+ * of the same structure.
+ *
+ * Note that only objects within the original tree will be overridden, because
+ * arrays within the Highcharts options object tree should not be overridden by
+ * Views configs.
+ *
+ * @param object $original
+ *   A Highcharts options object tree to be overridden.
+ * @param array $override
+ *   An array tree which will override an original of the same tree structure.
+ *
+ * @return
+ *   An overridden Highcharts options object tree.
+ */
+function highcharts_views_options_override($original, $override) {
+  if (is_array($override) && (is_object($original) || is_null($original))) {
+    foreach ($override as $key => $value) {
+      // We want to add new override properties even if they do not exist on
+      // the original object, so instantiate the key if it does not exist.
+      $temp = clone $original;
+      $temp->{$key} = !isset($original->{$key}) ? new stdClass() : $original->{$key};
+
+      $merged = highcharts_views_options_override($temp->{$key}, $value);
+      // Ignore empty strings returned by every form element from
+      // highcharts_views_plugin_style_highcharts::options_form(). Prepare to
+      // check empty on mixed var, which could be an object.
+      $check_empty = is_object($merged) ? get_object_vars($merged) : $merged;
+      if (!empty($check_empty)) {
+        $original->{$key} = $merged;
+      }
+    }
+  }
+  // Only override the original if the piece we're looking at is not an array,
+  // and if override value is not empty.
+  elseif (!empty($override) && !is_array($original)) {
+    return $override;
+  }
+
+  return $original;
+}
+
+/**
+ * Highcharts library FAPI.
+ *
+ * @param array $default_values
+ *   Optional. A keyed array of FAPI element default values.
+ */
+function highcharts_views_object_form($default_values = array()) {
+  $form = array();
+
+  // Get the options definition as a flat array.
+  module_load_include('inc', 'highcharts', 'highcharts.reference');
+  $flat = highcharts_options_definition();
+
+  // Convert the flat array of sections to a nested array. For example,
+  // $flat['foo.bar.baz'] will become $nested['foo']['bar']['baz'].
+  $nested = array();
+  foreach ($flat as $key => $value) {
+    $tree = explode('.', $key);
+    _set_nested_value($nested, $tree, $value);
+  }
+  ksort($nested);
+
+  // Convert nested array to FAPI.
+  $form = highcharts_views_options_fapi($form, $nested, $default_values);
+
+  return $form;
+}
+
+/**
+ * Descends through a tree of ancestors, into a nested array, and set a value.
+ *
+ * @param array $nested
+ *   By reference. A nested array.
+ * @param array $tree
+ *   An array of ancestors.
+ * @param array $value
+ *   The array value to be set.
+ */
+function _set_nested_value(array &$nested, array $tree, $value) {
+  $current = &$nested;
+  foreach ($tree as $key) {
+    // To handle the original input, if an item is not an array, replace it with
+    // an array with the value as the first item.
+    if (!is_array($current)) {
+      $current = array($current);
+    }
+    if (!array_key_exists($key, $current)) {
+      $current[$key] = array();
+    }
+    $current = &$current[$key];
+  }
+  $current = $value;
+}
+
+/**
+ * Convert nested array to FAPI recursively.
+ *
+ * @param array $form
+ *   A piece of the form.
+ * @param array $nested
+ *   A piece of the nested array definition.
+ * @param array $default_values
+ *   Optional. A keyed array of FAPI element default values.
+ *
+ * @return array
+ *   A Drupal FAPI array.
+ */
+function highcharts_views_options_fapi($form = array(), $nested = array(), $default_values = array()) {
+  foreach ($nested as $key => $value) {
+    // Convert key into a human-readable string: separate CamelCase with spaces
+    // and capitalize the first letter.
+    $title = drupal_ucfirst(preg_replace('/(?<=\\w)(?=[A-Z])/', " $1", $key));
+    // Set the title for all elements.
+    $form[$key]['#title'] = $title;
+
+    // Sanitize and HTML correct description.
+    $d = isset($value['description']) ? $value['description'] : isset($value['desc']) ? $value['desc'] : NULL;
+    $description = is_string($d) ? _filter_htmlcorrector(filter_xss_admin($d)) : '';
+    // Sanitize and HTML correct default, and append to description.
+    if (is_string($value['default']) && !empty($value['default'])) {
+      $default = '<code>' . _filter_htmlcorrector(filter_xss_admin($value['default'])) . '</code>';
+      $description .= ' ' . t('Defaults to !default.', array('!default' => $default));
+    }
+    // Set the description for all elements.
+    if (!empty($description)) {
+      $form[$key]['#description'] = $description;
+    }
+
+    // Find elements. Note that we check for a 'type' string instead of isset()
+    // because 'type' is also an array key in the options definition.
+    if (is_array($value) && is_string($value['type'])) {
+      // Set default values.
+      if (isset($default_values[$key]) && !is_array($default_values[$key])) {
+        $form[$key]['#default_value'] = $default_values[$key];
+      }
+
+      // Set a different FAPI element type per array item type.
+      switch ($value['type']) {
+        // Supported types.
+        case 'Boolean':
+          $form[$key]['#type'] = 'select';
+          $form[$key]['#options'] = array('' => '', TRUE => t('True'), FALSE => t('False'));
+          break;
+        case 'Number':
+          $form[$key]['#element_validate'][] = '_is_numeric_validate';
+        case 'String':
+        // @todo $options->exporting->filename 'type' is lowercase in the docs.
+        case 'string':
+          $form[$key]['#type'] = 'textfield';
+          break;
+        case 'Array<Mixed>':
+        case 'Array<String>':
+        case 'Mixed':
+        case 'Function':
+        case 'Color':
+          // Ensure the global user has permission to use custom JS for
+          // Highcharts views, which should only be granted to trusted users.
+          // If we want to allow this option override, there is literally no way
+          // to validate that custom JS or callback is secure.
+          if (user_access(HIGHCHARTS_VIEWS_JS_PERM)) {
+            $form[$key]['#type'] = 'textarea';
+            $form[$key]['#rows'] = 3;
+          }
+          break;
+        // @todo find out why 'Array<Object>' breaks things. But when it is
+        // set here, it fails inside the exporting buttons section.
+        case 'Array<Object>':
+          // Do nothing here.
+          break;
+        // Unsupported types (objects, etc). Give some indication that these are
+        // available in the Highcharts library API, but not in Drupal FAPI.
+        default:
+          // If the 'type' is empty, set to a human readable string. Some
+          // options (sometimes described as 'n/a…', have '' (an empty string
+          // set as the type. @see plotOptions.series.dataLabels->staggerLines
+          // and plotOptions.series.states.hover.marker->states.
+          $value['type'] = $value['type'] ? $value['type'] : t('Empty');
+
+          $highcharts_views_api_url = url('http://drupalcode.org/project/highcharts.git/blob/refs/heads/6.x-2.x:/views/highcharts_views.api.php', array('absolute' => TRUE));
+          $highcharts_library_api_url = url('http://www.highcharts.com/ref', array('absolute' => TRUE));
+          $markup = '<div>';
+          $markup .= '<strong>' . $key . '</strong>: ' . $value['type'];
+          $markup .= '</div>';
+          // Add existing description.
+          if (!empty($description)) {
+            $markup .= '<div class="description">' . $description . '</div>';
+          }
+          $markup .= '<div class="messages warning">' . t('This option is available in the <a href="@highcharts_library_api_url">Highcharts API</a>, but %type option types can not be safely overridden here. See hook_highcharts_views_charts() in the <a href="@highcharts_library_api_url">Highcharts views module API documentation</a>.', array('%type' => $value['type'], '@highcharts_library_api_url' => $highcharts_library_api_url, '@highcharts_views_api_url' => $highcharts_views_api_url)) . '</div>';
+
+          $form[$key] = array(
+            '#markup' => $markup,
+          );
+          break;
+      }
+    }
+
+    // Find nested section containing elements.
+    elseif (is_array($value) && !empty($value)) {
+      // Create fieldset for each section.
+      $form[$key]['#type'] = 'fieldset';
+      $form[$key]['#collapsible'] = TRUE;
+      $form[$key]['#collapsed'] = TRUE;
+
+      // Prepare members.
+      if (!empty($value['members'])) {
+        // Merge members up a level in the array.
+        $value += $value['members'];
+        // Re sort section array.
+        ksort($value);
+        // Remove members from their old position in the array.
+        $value['members'] = array();
+      }
+
+      // Recurse all children.
+      $form[$key] = highcharts_views_options_fapi($form[$key], $value, $default_values[$key]);
+    }
+  }
+
+  return $form;
+}
+
+/**
+ * Validate a string is numeric.
+ */
+function _is_numeric_validate($element, &$form_state) {
+  if (!empty($element['#value']) && !is_numeric($element['#value'])) {
+    form_error($element, t('This field must be numeric.'));
+  }
+}

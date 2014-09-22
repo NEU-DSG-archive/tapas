@@ -1,0 +1,28 @@
+<?php
+/**
+ * @file
+ * APC Administration Interface
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function apc_admin_menu() {
+  $items = array();
+
+  $items['admin/config/development/performance/cache'] = array(
+    'title' => "Cache",
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/config/development/performance/apc_admin'] = array(
+    'title' => "APC",
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('apc_admin_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'apc_admin.admin.inc',
+  );
+
+  return $items;
+}

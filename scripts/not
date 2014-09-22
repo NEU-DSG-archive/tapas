@@ -1,0 +1,11 @@
+Loaded plugins: katello, priorities, product-id, rhnplugin, security,
+              : subscription-manager
+Updating certificate-based repositories.
+Excluding Packages in global exclude list
+Finished
+Skipping security plugin, no data
+Setting up Upgrade Process
+No package phplibssl.so.0.9.8 available.
+No package = available.
+No package found available.
+No Packages marked for Update

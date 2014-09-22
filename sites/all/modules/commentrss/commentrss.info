@@ -1,0 +1,12 @@
+name = Comment RSS
+description = Provides RSS feeds for comments
+core = 7.x
+dependencies[] = comment
+configure = admin/config/services/rss-publishing/commentrss
+
+; Information added by drupal.org packaging script on 2013-09-30
+version = "7.x-2.4+0-dev"
+core = "7.x"
+project = "commentrss"
+datestamp = "1380559734"
+

@@ -1,0 +1,88 @@
+<?php
+function reference_delete_entity_delete($entity, $type) {
+  $entity_id = entity_extract_ids($type, $entity);
+  $entity_id = $entity_id[0];
+  
+  if (module_exists('references')) {
+    switch ($type) {
+      case 'node' :
+        $module = 'node_reference';
+
+        if ( $fields = _reference_delete_make_table_names($module) ) {
+          foreach ( $fields as $field => $tables ) {
+            foreach ( $tables as $table ) {
+              db_delete($table)
+                ->condition($field . '_nid', $entity_id, '=')
+                ->execute();
+            }
+          }
+        }
+
+        field_cache_clear();
+
+      break;
+
+      case 'user' :
+        $module = 'user_reference';
+
+        if ( $fields = _reference_delete_make_table_names($module) ) {
+          foreach ( $fields as $field => $tables ) {
+            foreach ( $tables as $table ) {
+              db_delete($table)
+                ->condition($field . '_uid', $entity_id, '=')
+                ->execute();
+            }
+          }
+        }
+
+        field_cache_clear();
+      break;
+    }
+  }
+  elseif (module_exists('entityreference')) {
+    $module = 'entityreference';
+
+    if ( $fields = _reference_delete_make_table_names($module) ) {
+      foreach ( $fields as $field => $tables ) {
+        foreach ( $tables as $table ) {
+          db_delete($table)
+            ->condition($field . '_target_id', $entity_id, '=')
+            ->execute();
+        }
+      }
+    }
+
+    field_cache_clear();
+  }
+}
+
+function _reference_delete_get_reference_fields($module) {
+  $fields = field_info_fields();
+
+  $reference_fields = array();
+
+  foreach ( $fields as $field => $properties ) {
+    if ($properties['module'] == $module) {
+      $reference_fields[$field] = $field;
+    }
+  }
+
+  if ( count($reference_fields) ) {
+    return $reference_fields;
+  }
+}
+
+function _reference_delete_make_table_names($module) {
+  if (isset($module)) {
+    $fields = _reference_delete_get_reference_fields($module);
+
+    if ( count($fields) ) {
+      $tables = array();
+      foreach ( $fields as $field ) {
+        $tables[$field] = array('field_data_' . $field, 'field_revision_' . $field);
+      }
+
+      return $tables;
+    }
+  }
+}

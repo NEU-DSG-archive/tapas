@@ -1,0 +1,9 @@
+name = Domain/Organic Groups Bridge
+description = Makes compatible the node access permissioning of domain access and organic groups.
+
+core = 7.x
+package = Domain Access
+version = 7.x-1.x-dev
+
+dependencies[] = domain
+dependencies[] = og

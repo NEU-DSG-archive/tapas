@@ -1,0 +1,18 @@
+; $Id: regcode_mailer.info,v 1.1.4.2 2010/03/06 05:21:58 aidan Exp $
+name = Code mailer
+description = Allow registration codes to be bulk emailed.
+core = 7.x
+package = Registration
+
+dependencies[] = regcode
+dependencies[] = token
+
+files[] = regcode_mailer.install
+files[] = regcode_mailer.module
+
+; Information added by drupal.org packaging script on 2011-10-15
+version = "7.x-1.0"
+core = "7.x"
+project = "regcode"
+datestamp = "1318678302"
+

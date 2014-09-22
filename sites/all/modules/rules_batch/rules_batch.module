@@ -1,0 +1,88 @@
+<?php
+
+/**
+ * @file
+ * Provides a batched rule set component to rules.
+ *
+ * @see rules_batch.rules.inc
+ */
+
+/**
+ * Batch operation which will take over execution of each rule.
+ */
+function rules_batch_batch_loop_process(RulesBatchLoop $rule, RulesState $state, &$context) {
+
+  $param_info = $rule->pluginParameterInfo();
+  $list = $rule->getPublicArgument('list', $param_info['list'], $state);
+  $item_var_info = $rule->listItemInfo();
+  $item_var_name = $rule->settings['item:var'];
+
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current'] = $list->getIterator();
+    $context['sandbox']['max'] = $list->count();
+  }
+
+  $item = $list[$context['sandbox']['current']->key()];
+
+  rules_log('Processing %name.', array('%name' => $rule->getPluginName()), RulesLog::INFO, $rule);
+  // Use a separate state so variables are available in the loop only.
+  $state->addVariable($item_var_name, $item, $item_var_info);
+  $rule->process($state);
+  $state->cleanUp($rule);
+
+  $context['results'][] = $context['sandbox']['current']->key();
+  $context['sandbox']['current']->next();
+  $context['sandbox']['progress']++;
+
+  if ($context['sandbox']['current']->valid()) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+/**
+ * Batch 'finished' callback
+ */
+//ADDED to fix spelling error
+//function rules_batch_batch_loop_fininshed($success, $results, $operations) {
+function rules_batch_batch_loop_finished($success, $results, $operations) {
+//END
+//ADDED deleting directory utilized in bulk upload specified in filefield_sources_plupload.module
+if(isset($_SESSION['randfolder'])){
+//	rmdir($_SESSION['randfolder']);
+	unset($_SESSION['randfolder']);
+}
+//END
+  if ($success) {
+    // Here we do something meaningful with the results.
+//ADDED these messages are useless and people complained about them.
+//    $message = count($results) .' processed.';
+//    $message .= theme('item_list', $results);
+$message="TAPAS Batch process completed successfully";
+//END
+  }
+  else {
+    // An error occurred.
+    // $operations contains the operations that remained unprocessed.
+    $error_operation = reset($operations);
+//ADDED Modified so no arrays printed
+//    $message = t('An error occurred while processing %error_operation with arguments: @arguments', array('%error_operation' => $error_operation[0], '@arguments' => print_r($error_operation[1], TRUE)));
+    $message = t('An error occurred while processing %error_operation with arguments: @arguments', array('%error_operation' => $error_operation[0]));
+//END
+  }
+//ADDED to delete the tei bulk upload content type used to generate individual files. This assures files are removed on success or failure
+	if(isset($_SESSION['batch_remove'])){
+		node_delete($_SESSION['batch_remove']);
+		unset($_SESSION['batch_remove']);
+		if($success){
+			drupal_set_message($message);
+		}else{
+			drupal_set_message('<h3>An error occurred while processing the TEI Bulk Upload. Please contact the site administrator</h3>', 'error');
+		}
+	}else{
+//END
+  drupal_set_message($message);
+//ADDED to delete the tei bulk upload content type used to generate individual files. This assures files are removed on success or failure
+	}
+//END
+}

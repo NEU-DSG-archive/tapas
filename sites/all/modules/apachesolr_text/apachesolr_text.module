@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ */
+//ADDED from https://drupal.org/files/apachesolr_text.zip at https://drupal.org/comment/6002468#comment-6002468
+/**
+ *
+ * @param type $mappings
+ * @param type $entity_type
+ *
+ */
+function apachesolr_text_apachesolr_field_mappings_alter(&$mappings, $entity_type) {
+  // Enable indexing for text fields
+  $mappings['text'] = array(
+    'indexing_callback' => 'apachesolr_fields_default_indexing_callback',
+    'map callback' => '',
+    'index_type' => 'string',
+    'facets' => TRUE,
+    'facet missing allowed' => TRUE,
+    'dependency plugins' => array('bundle', 'role'),
+    'hierarchy callback' => FALSE,
+    'name_callback' => '',
+    'facet mincount allowed' => FALSE,
+    // Field API allows any field to be multi-valued.
+    // If we set this to false we are able to sort
+    'multiple' => FALSE,
+  );
+}

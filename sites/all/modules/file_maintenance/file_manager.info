@@ -1,0 +1,15 @@
+name = File manager
+description = A tool to browse and manage files in the database (file_managed and file_usage) and the upload directory.
+core = 7.x
+
+stylesheets[all][] = css/file_manager.css
+
+files[] = includes/file_manager.admin.inc
+files[] = includes/file_manager.inc
+files[] = js/file_manager.js
+; Information added by Drupal.org packaging script on 2013-12-16
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "file_maintenance"
+datestamp = "1387221205"
+

@@ -1,0 +1,11 @@
+/*lte IE 7 */
+#menu-bar ul li, #block-system-user-menu li{
+	display:inline;
+	float:none;
+	vertical-align:bottom;
+}
+
+.region-header{
+	width:auto;
+}
+

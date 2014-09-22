@@ -1,0 +1,10 @@
+name = Reference Delete
+description = Deletes reference fields created with the References module when the referenced node or user is deleted.
+core = 7.x
+
+; Information added by drupal.org packaging script on 2013-05-25
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "reference_delete"
+datestamp = "1369451681"
+

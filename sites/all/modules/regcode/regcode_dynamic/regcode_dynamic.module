@@ -1,0 +1,467 @@
+<?php
+// $Id: regcode_dynamic.module,v 1.1.2.8 2010/08/30 14:20:40 aidan Exp $
+
+
+/**
+ * @file
+ * The dynamic code module creates codes on the fly as they are used.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function regcode_dynamic_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case 'admin/config/people/regcode/dynamic':
+      $output  = '<p>';
+      $output .= t('In some systems where thousands or hundreds of thousands '
+              . 'of codes need to be created, it is impractical to store '
+              . 'the codes in the regcode system. The regcode_dynamic module '
+              . 'allows the operator to define a checksum algorithm for validating a '
+              . 'code. If a user registers with a code that passes the checksum, '
+              . 'that code is then created dynamically and assigned to the '
+              . 'new user.');
+      $output .= '</p>';
+      break;
+  }
+  return $output;
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function regcode_dynamic_menu() {
+
+  $items = array();
+
+  $items['admin/config/people/regcode/dynamic'] = array(
+    'title' => 'Dynamic',
+    'description' => 'Dynamic codes',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('regcode_dynamic_rules_page'),
+    'access arguments' => array('administer registration codes'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 70,
+  );
+
+  $items['admin/config/people/regcode/dynamic/rule/%'] = array(
+    'title' => 'Edit rule',
+    'description' => 'Modify settings for this dynamic code rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('regcode_dynamic_settings', 6),
+    'access arguments' => array('administer registration codes'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/people/regcode/dynamic/add-rule'] = array(
+    'title' => 'Add rule',
+    'description' => 'Create a new dynamic code rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('regcode_dynamic_create'),
+    'access arguments' => array('administer registration codes'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  $items['admin/config/people/regcode/dynamic/rule/%/delete'] = array(
+    'title' => 'Delete rule',
+    'description' => 'Delete settings for this dynamic code rule',
+    'page callback' => 'regcode_dynamic_settings_delete',
+    'page arguments' => array(6),
+    'access arguments' => array('administer registration codes'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_user_presave().
+ */
+function regcode_dynamic_user_presave(&$edit, $account, $category) {
+  if ($category === 'account' && !empty($edit['regcode_code'])) {
+
+    // Check this code isn't already a code
+    $regcode = regcode_load(array('code' => $edit['regcode_code']));
+    if ($regcode !== FALSE) {
+      return;
+    }
+
+    // Ensure this is a valid dynamic code
+    $rules = variable_get('regcode_dynamic_settings', array());
+    $valid = FALSE;
+    foreach ($rules as $rule) {
+      $handler = regcode_dynamic_handlers($rule['handler']);
+      $valid   = call_user_func($handler['validator'], $edit['regcode_code'], $rule);
+      if ($valid) {
+        break;
+      }
+    }
+    if (!$valid) {
+      return;
+    }
+
+    // Create the code just in time for regcode to take over
+    $code       = new stdClass;
+    $code->code = $edit['regcode_code'];
+    $tags       = $rule['terms'];
+    regcode_save($code, $tags);
+  }
+}
+
+
+/**
+ * Callback: Delete a rule
+ */
+function regcode_dynamic_settings_delete($machine_name) {
+  $settings = variable_get('regcode_dynamic_settings', array());
+  unset($settings[$machine_name]);
+  variable_set('regcode_dynamic_settings', $settings);
+
+  drupal_set_message(t('Rule deleted'));
+  drupal_goto('admin/config/people/regcode/dynamic');
+}
+
+
+/**
+ * Form: Settings form for dynamic codes
+ */
+function regcode_dynamic_settings($form, &$form_state, $machine_name) {
+  $settings = variable_get('regcode_dynamic_settings', array());
+  if (!isset($settings[$machine_name])) {
+    drupal_not_found();
+  }
+
+  $data = $settings[$machine_name];
+  $handler = regcode_dynamic_handlers($data['handler']);
+
+  // store rule in form state
+  $form_state['regcode_dynamic_rule'] = $data;
+
+  $form['regcode_dynamic_handler'] = array(
+    '#type' => 'fieldset',
+    '#title' => $handler['title'],
+    '#description' => $handler['description'],
+  );
+
+  $form['regcode_dynamic_handler']['handler'] = array(
+    '#type' => 'value',
+    '#default_value' => $data['handler'],
+  );
+
+  $form['regcode_dynamic_handler']['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rule name'),
+    '#required' => TRUE,
+    '#default_value' => $data['name'],
+  );
+
+  $form['regcode_dynamic_handler']['terms'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Tags codes'),
+    '#description' => t('Tag dynamically created codes as they are used.'),
+    '#options' => regcode_get_vocab_terms(),
+    '#default_value' => (array) $data['terms'],
+  );
+
+  $handler_form = 'regcode_dynamic_handler_' . $data['handler'];
+  $form['regcode_dynamic_handler'] += $handler_form($data);
+
+  $form['regcode_dynamic_save'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+
+  $form['regcode_dynamic_delete'] = array(
+    '#type' => 'submit',
+    '#value' => t('Delete configuration'),
+  );
+
+  return $form;
+}
+
+
+/**
+ * Form submit: Save settings form
+ */
+function regcode_dynamic_settings_submit($form, $form_state) {
+  $data = $form_state['regcode_dynamic_rule'];
+  $machine_name = $data['machine_name'];
+
+  foreach (element_children($form['regcode_dynamic_handler']) as $key) {
+    $data[$key] = $form_state['values'][$key];
+  }
+
+  $settings = variable_get('regcode_dynamic_settings', array());
+  $settings[$machine_name] = $data;
+  variable_set('regcode_dynamic_settings', $settings);
+
+  drupal_set_message(t('Your settings have been saved.'));
+  drupal_goto('admin/config/people/regcode/dynamic');
+}
+
+
+/**
+ * Form: Create form for dynamic codes
+ */
+function regcode_dynamic_create($form, &$form_state) {
+
+  $handlers = regcode_dynamic_handlers();
+  $options  = array();
+  foreach ($handlers as $handler_key => $handler) {
+    $options[$handler_key] = $handler['title'];
+  }
+
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Rule name'),
+    '#maxlength' => 255,
+    '#description' => t('Name this rule for administration purposes.'),
+    '#required' => TRUE,
+  );
+
+  $form['machine_name'] = array(
+    '#type' => 'machine_name',
+    '#title' => t('Machine name'),
+    '#maxlength' => 21,
+    '#description' => t('A unique name to construct the URL for this rule. It must only contain lowercase letters, numbers and hyphens.'),
+    '#machine_name' => array(
+      'exists' => 'regcode_dynamic_name_exists',
+    ),
+  );
+
+  $form['handler'] = array(
+    '#type' => 'select',
+    '#title' => t('Handler'),
+    '#options' => $options,
+    '#description' => t('Select the handler used to validate codes.'),
+    '#required' => TRUE,
+  );
+
+  $form['terms'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Tags codes'),
+    '#description' => t('Tag dynamically created codes as they are used.'),
+    '#options' => regcode_get_vocab_terms(),
+  );
+
+  $form['save'] = array(
+    '#type' => 'submit',
+    '#value' => t('Create handler'),
+  );
+
+  return $form;
+}
+
+
+/**
+ * Returns true if a rule with the given machine_name exists
+ */
+function regcode_dynamic_name_exists($value) {
+  $settings = variable_get('regcode_dynamic_settings', array());
+  return isset($settings[$value]);
+}
+
+
+/**
+ * Form submit: Create a new rule set
+ */
+function regcode_dynamic_create_submit($form, $form_state) {
+  $machine_name = $form_state['values']['machine_name'];
+  $settings = variable_get('regcode_dynamic_settings', array());
+  $settings[$machine_name] = array(
+    'name' => $form_state['values']['name'],
+    'machine_name' => $form_state['values']['machine_name'],
+    'handler' => $form_state['values']['handler'],
+    'terms' => $form_state['values']['terms'],
+  );
+  variable_set('regcode_dynamic_settings', $settings);
+
+  drupal_set_message(t('New dynamic rule created'));
+  drupal_goto('admin/config/people/regcode/dynamic/rule/' . $machine_name);
+}
+
+
+/**
+ * List all of the rules as a HTML table
+ */
+function regcode_dynamic_rules_page() {
+  $rules = variable_get('regcode_dynamic_settings', array());
+  $rows  = array();
+
+  foreach ($rules as $row) {
+    $actions = array();
+    $actions[] = l('Edit', sprintf(
+      'admin/config/people/regcode/dynamic/rule/%s', $row['machine_name']));
+    $actions[] = l('Delete', sprintf(
+      'admin/config/people/regcode/dynamic/rule/%s/delete', $row['machine_name']));
+
+    $rows[] = array(
+      $row['name'],
+      $row['handler'],
+      implode(' | ', $actions),
+    );
+  }
+
+  $header = array(
+    t('Name'),
+    t('Handler'),
+    t('Operations'),
+  );
+
+  $table = array(
+    '#theme' => 'table',
+    '#header' => $header,
+    '#rows' => $rows,
+    '#empty' => t('No rules defined. <a href="@link">Add rule</a>.', array('@link' => url('admin/config/people/regcode/dynamic/add-rule'))),
+
+  );
+
+  return $table;
+}
+
+
+/**
+ * Grab all available dynamic code handlers
+ */
+function regcode_dynamic_handlers($handler = NULL) {
+
+  // Module defined handlers
+  $handlers = array(
+    'simple' => array(
+      'title' => t('Simple handler'),
+      'description' => t('This handler uses incremental numbers with a configurable offset. These numbers can be easily guessed if the pattern is known.'),
+      'configuration' => 'regcode_dynamic_handler_simple',
+      'validator' => 'regcode_dynamic_handler_simple_validate',
+    ),
+    'luhn' => array(
+      'title' => t('Luhn handler (TODO)'),
+      'description' => t('Uses the <a href="http://en.wikipedia.org/wiki/Luhn_algorithm">luhn algorithm</a> to validate registration codes.'),
+      'configuration' => 'regcode_dynamic_handler_luhn',
+      'validator' => 'regcode_dynamic_handler_luhn_validate',
+    ),
+  );
+
+  // Check if we're loading a specific handler
+  if ($handler !== NULL) {
+    if (isset($handlers[$handler])) {
+      return $handlers[$handler];
+    }
+    else {
+      return FALSE;
+    }
+  }
+
+  return $handlers;
+}
+
+
+/**
+ * Grab the setting for the selected dynamic rule set
+ */
+function regcode_dynamic_variable_get($data, $parameter, $default) {
+  return isset($data[$parameter]) ? $data[$parameter] : $default;
+}
+
+
+/**
+ * Simple incremental number handler
+ */
+function regcode_dynamic_handler_simple($data) {
+
+  $form = array();
+
+  $form['startnumber'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Start number'),
+    '#description' => t('The number to start from.'),
+    '#default_value' => regcode_dynamic_variable_get($data, 'startnumber', 1000000000),
+    '#required' => TRUE,
+  );
+
+  $form['length'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Code length'),
+    '#description' => t('The length of the dynamic code.'),
+    '#default_value' => regcode_dynamic_variable_get($data, 'length', 10),
+    '#required' => TRUE,
+  );
+
+  $form['increment'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Code increment'),
+    '#description' => t('The difference between each dynamic code.'),
+    '#default_value' => regcode_dynamic_variable_get($data, 'increment', 7),
+    '#required' => TRUE,
+  );
+
+  return $form;
+}
+
+
+/**
+ * Validate whether a code is a valid number
+ */
+function regcode_dynamic_handler_simple_validate($number, $settings) {
+  $number      = (int) $number;
+  $startnumber = (int) $settings['startnumber'];
+  $length      = (int) $settings['length'];
+  $increment   = (int) $settings['increment'];
+
+  // Check the number is big enough
+  if ($number < $startnumber) {
+    return FALSE;
+  }
+
+  if (strlen($number) !== $length) {
+    return FALSE;
+  }
+
+  $number = $number - $startnumber;
+  if ($number % $increment !== 0) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+
+/**
+ * Luhn number handler
+ */
+function regcode_dynamic_handler_luhn() {
+
+  $form = array();
+
+  $form['startnumber'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Start number'),
+    '#description' => t('The number to start from'),
+    '#default_value' => variable_get('startnumber', 1000000000),
+    '#required' => TRUE,
+  );
+
+  $form['length'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Code length'),
+    '#description' => t('The length of the dynamic code'),
+    '#default_value' => variable_get('length', 10),
+    '#required' => TRUE,
+  );
+
+  return $form;
+}
+
+
+/**
+ * Validate a number against the luhn algorithm
+ *
+ * @see http://en.wikipedia.org/wiki/Luhn_algorithm
+ */
+function regcode_dynamic_handler_luhn_validate($number) {
+
+  return FALSE;
+}
+

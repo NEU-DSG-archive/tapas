@@ -1,0 +1,51 @@
+<?php
+// $Id: regcode_roles.install,v 1.1.4.4 2010/03/14 15:37:19 aidan Exp $
+
+/**
+ * @file
+ * Install, update and uninstall functions for the regcode_roles module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function regcode_roles_schema() {
+  $schema['regcode_roles'] = array(
+    'description' => 'Store registration role rules',
+    'fields' => array(
+      'id' => array(
+        'description' => 'ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'term_id' => array(
+        'description' => 'Term ID',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'role_id' => array(
+        'description' => 'Role ID',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'expire_date' => array(
+        'description' => 'Expiration date',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+      'expire_duration' => array(
+        'description' => 'Expiration duration',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}

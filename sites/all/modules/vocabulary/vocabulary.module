@@ -1,0 +1,372 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function vocabulary_menu() {
+  $items['taxonomy/%taxonomy_vocabulary'] = array(
+    'title callback' => 'taxonomy_admin_vocabulary_title_callback',
+    'title arguments' => array(1),
+    'page callback' => 'vocabulary_page',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'vocabulary.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['taxonomy/%taxonomy_vocabulary/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $path = drupal_get_path('module', 'taxonomy');
+  $items['taxonomy/%taxonomy_vocabulary/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_form_vocabulary', 1),
+    'access arguments' => array('administer taxonomy'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'taxonomy.admin.inc',
+    'file path' => $path,
+    'weight' => 5,
+  );
+  $items['taxonomy/%taxonomy_vocabulary/list'] = array(
+    'title' => 'List',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_overview_terms', 1),
+    'access arguments' => array('administer taxonomy'),
+    'type' => MENU_LOCAL_TASK,
+    'file path' => $path,
+    'file' => 'taxonomy.admin.inc',
+    'weight' => 10,
+
+  );
+  $items['taxonomy/%taxonomy_vocabulary/add'] = array(
+    'title' => 'Add term',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_form_term', array(), 1),
+    'access arguments' => array('administer taxonomy'),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'taxonomy.admin.inc',
+    'file path' => $path,
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_form_alter() for taxonomy_form_vocabulary
+ */
+function vocabulary_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
+  if (arg(0) == 'taxonomy' && arg(2)=='edit') {
+    $form['#submit'][] =  'vocabulary_taxonomy_form_vocabulary_direct';
+  }
+  field_attach_form('taxonomy_vocabulary', $form['#vocabulary'] , $form, $form_state);
+}
+
+/**
+ * Form submit that redirects to taxonomy page instead of admin page.
+ */
+function vocabulary_taxonomy_form_vocabulary($form, &$form_state) {
+  $form_state['redirect'] = 'taxonomy/' . $form_state['values']['vid'];
+  return;
+}
+
+/**
+ * Implements hook_taxonomy_vocabulary_update().
+ */
+function vocabulary_taxonomy_vocabulary_update($vocabulary) {
+  field_attach_update('taxonomy_vocabulary', $vocabulary);
+}
+
+/**
+ * Implements hook_taxonomy_vocabulary_insert().
+ */
+function vocabulary_taxonomy_vocabulary_insert($vocabulary) {
+  field_attach_insert('taxonomy_vocabulary', $vocabulary);
+}
+
+/**
+ * View function for vcabulary.
+ */
+function taxonomy_vocabulary_view($vocabulary, $view_mode = 'full') {
+  field_attach_prepare_view('taxonomy_vocabulary', array($vocabulary->vid => $vocabulary), $view_mode);
+  entity_prepare_view('taxonomy_vocabulary', array($vocabulary->vid => $vocabulary));
+
+  $build = array(
+    '#theme' => 'taxonomy_vocabulary',
+    '#vocabulary' => $vocabulary,
+    '#view_mode' => $view_mode,
+  );
+
+  $build += field_attach_view('taxonomy_vocabulary', $vocabulary, $view_mode);
+
+  return $build;
+}
+
+/**
+ * View multiple taxonomy terms.
+ */
+ //ADDED COMMENTED OUT BECAUSE FUNCTION ADDED TO CORE TAXONOMY IN V 7.17
+ /*
+function taxonomy_term_view_multiple($terms, $view_mode = 'teaser', $weight = 0) {
+  field_attach_prepare_view('taxonomy_term', $terms, $view_mode);
+  entity_prepare_view('taxonomy_term', $terms);
+  $build = array();
+  foreach ($terms as $term) {
+    $build['terms'][$term->tid] = taxonomy_term_view($term, $view_mode);
+    $build['terms'][$term->tid]['#weight'] = $weight;
+    $weight++;
+  }
+  $build['terms']['#sorted'] = TRUE;
+  return $build;
+}
+*/
+//END
+/**
+ * Implements hook_entity_info_alter().
+ */
+function vocabulary_entity_info_alter(&$entity_info)  {
+  $entity_info['taxonomy_term']['view modes']['teaser'] = array(
+    'label' => t('Teaser'),
+    'custom settings' => FALSE,
+  );
+  $entity_info['taxonomy_vocabulary']['fieldable'] = TRUE;
+  /* Making vocalaries fieldable*/
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['label'] = t('Vocabulary');
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['admin']['path'] = 'admin/structure/taxonomy';
+  $entity_info['taxonomy_vocabulary']['bundles']['taxonomy_vocabulary']['admin']['access arguments'] =  array('administer taxonomy');
+
+  $entity_info['taxonomy_vocabulary']['view modes']['full'] = array(
+    'label' => t('Full'),
+    'custom settings' => FALSE,
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function vocabulary_theme() {
+  return array(
+    'taxonomy_vocabulary' => array(
+      'render element' => 'elements',
+      'template' => 'taxonomy-vocabulary',
+    ),
+  );
+}
+
+/**
+ * Preprocess for taxonomy_vocabulary.
+ */
+function template_preprocess_taxonomy_vocabulary(&$variables) {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  $variables['vocabulary'] = $variables['elements']['#vocabulary'];
+  $vocabulary = $variables['vocabulary'];
+
+  $variables['vocabulary_url']  = url('taxonomy/' . $vocabulary->vid);
+  $variables['vocabulary_name'] = check_plain($vocabulary->name);
+  $variables['page']      = taxonomy_vocabulary_is_page($vocabulary);
+
+  // Flatten the term object's member fields.
+  $variables = array_merge((array)$vocabulary, $variables);
+
+  // Helpful $content variable for templates.
+  foreach (element_children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+
+  // field_attach_preprocess() overwrites the $[field_name] variables with the
+  // values of the field in the language that was selected for display, instead
+  // of the raw values in $term->[field_name], which contain all values in all
+  // languages.
+  field_attach_preprocess('taxonomy_vocabulary', $vocabulary, $variables['content'], $variables);
+  // Gather classes.
+  $variables['classes_array'][] = 'vocabulary-' . $vocabulary->machine_name;
+
+  // Clean up name so there are no underscores.
+  $variables['theme_hook_suggestions'][] = 'taxonomy-vocabulary__' . $vocabulary->machine_name;
+}
+
+/**
+ * Determins if page view for a vocabulary..
+ */
+function taxonomy_vocabulary_is_page($vocabulary) {
+  $page_vocabulary = menu_get_object('taxonomy_vocabulary', 1);
+  return (!empty($page_vocabulary) ? $page_vocabulary->vid == $vocabulary->vid : FALSE);
+}
+
+
+/**
+ * Token intergration.
+ */
+
+/**
+ * Implements hook_tokens().
+ */
+function vocabulary_tokens($type, $tokens, array $data = array(), array $options = array()) {
+  $sanitize = !empty($options['sanitize']);
+  $url_options = array('absolute' => TRUE);
+  if (isset($options['language'])) {
+    $url_options['language'] = $options['language'];
+    $language_code = $options['language']->language;
+  }
+  else {
+    $language_code = NULL;
+  }
+
+  $replacements = array();
+
+  if ($type == 'vocabulary' && !empty($data['vocabulary'])) {
+    $vocabulary = $data['vocabulary'];
+
+    foreach ($tokens as $name => $original) {
+      switch ($name) {
+        // Simple key values on the node.
+
+        case 'machine-name':
+          $replacements[$original] = $sanitize ? check_plain($vocabulary->machine_name) : $vocabulary->machine_name;
+          break;
+
+        case 'list-url':
+          $replacements[$original] = url('admin/structure/taxonomy/' . $vocabulary->vid . '/list', $url_options);
+          break;
+
+        case 'add-url':
+          $replacements[$original] = url('admin/structure/taxonomy/' . $vocabulary->vid . '/add', $url_options);
+          break;
+
+        case 'short-edit-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/edit', $url_options);
+          break;
+
+        case 'short-list-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/list', $url_options);
+          break;
+
+        case 'short-add-url':
+          $replacements[$original] = url('taxonomy/' . $vocabulary->vid . '/add', $url_options);
+          break;
+      }
+    }
+  }
+
+  return $replacements;
+}
+
+/**
+ * Implements hook_token_info().
+ */
+function vocabulary_token_info() {
+
+  $vocabulary['list-url'] = array(
+    'name' => t("List URL"),
+    'description' => t("The URL of the node's List page."),
+  );
+
+  $vocabulary['add-url'] = array(
+    'name' => t("Add URL"),
+    'description' => t("The URL of the node's edit page."),
+  );
+
+  $vocabulary['short-edit-url'] = array(
+    'name' => t("Short Edit URL"),
+    'description' => t("The URL of the vocabulary's edit page as provided by vocabulary module."),
+  );
+
+  $vocabulary['short-list-url'] = array(
+    'name' => t("Short List URL"),
+    'description' => t("The URL of the node's List page as provided by vocabulary module."),
+  );
+
+  $vocabulary['short-add-url'] = array(
+    'name' => t("Short Add URL"),
+    'description' => t("The URL of the node's edit page as provided by vocabulary module."),
+  );
+
+  return array(
+    'tokens' => array('vocabulary' => $vocabulary),
+  );
+}
+
+/**
+ * Implements hook_pathauto().
+ */
+function vocabulary_pathauto($op) {
+  switch ($op) {
+    case 'settings':
+      $settings = array();
+      $settings['module'] = 'vocabulary';
+      $settings['token_type'] = 'vocabulary';
+      $settings['groupheader'] = t('Vocabulary path settings');
+      $settings['patterndefault'] = t('category/[vocabulary:name]');
+      $settings['patterndescr'] = t('Path pattern for vocabularies');
+
+      $tokens = token_info();
+      foreach ($tokens['tokens']['vocabulary'] as $key => $info) {
+        $settings['tokens']["[vocabulary:$key]"] = $info['description'];
+      }
+      $settings['supportsfeeds'] = '';
+      $settings['bulkname'] = t('Bulk generate aliases for vocabularies that are not aliased');
+      $settings['bulkdescr'] = t('Generate aliases for all existing vocabularies which do not already have aliases.');
+
+      return (object) $settings;
+    default:
+      break;
+  }
+}
+
+
+/**
+ * Generate aliases for all vocabularies without aliases.
+ */
+function vocabulary_pathauto_bulkupdate() {
+  // From all node types, only attempt to update those with patterns
+  // If there's a default pattern we assume all types might be updated.
+  $pattern = trim(variable_get('pathauto_vocabulary_pattern', '')) ;
+  if (!$pattern) return;
+  $vocabularies =  taxonomy_get_vocabularies();
+  $placeholders = array();
+  $count = 0;
+
+  foreach ($vocabularies as $vocabulary) {
+    if (pathauto_create_alias('vocabulary', 'bulkupdate', "taxonomy/$vocabulary->vid", array('vocabulary' => $vocabulary))) {
+      $count++;
+    }
+  }
+
+  drupal_set_message(format_plural($count,
+    'Bulk generation of vocabularies completed, one alias generated.',
+    'Bulk generation of vocabularies completed, @count aliases generated.'));
+}
+
+/**
+ * Implements hook_taxonomy().
+ */
+function vocabulary_taxonomy($op, $type, $object = NULL) {
+  switch ($type) {
+    case 'vocabulary':
+      switch ($op) {
+        case 'insert':
+        case 'update':
+          _pathauto_include();
+          // Use the category info to automatically create an alias
+          $vocabulary = (object) $object;
+          if ($vocabulary->name) {
+            $placeholders = pathauto_get_placeholders('vocabulary', $vocabulary);
+            pathauto_create_alias('vocabulary', $op, $placeholders, "taxonomy/$vocabulary->vid", $vocabulary->vid);
+          }
+
+          break;
+        case 'delete':
+          // If the category is deleted, remove the path aliases
+          $vocabulary = (object) $object;
+          path_set_alias('taxonomy/' . $vocabulary->vid);
+          path_set_alias('taxonomy/' . $vocabulary->vid . '/0/feed');
+          break;
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+}

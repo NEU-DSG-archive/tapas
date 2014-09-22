@@ -1,0 +1,289 @@
+<?php
+
+/**
+ * @file
+ * Extends File Entities to be revisionable.
+ */
+
+/**
+ * Implements hook_entity_info_alter().
+ *
+ * Extends the core file entity to be revisionable.
+ */
+function file_entity_revisions_entity_info_alter(&$entity_info) {
+  // Add revision table and revision key.
+  $entity_info['file']['revision table'] = 'file_managed_revisions';
+  $entity_info['file']['entity keys']['revision'] = 'vid';
+  $entity_info['file']['deletion callback'] = 'file_entity_delete';
+  $entity_info['file']['revision deletion callback'] = 'file_entity_revision_delete';
+
+  // Drupal fails hard here.
+  $entity_info['file']['schema_fields_sql']['revision table'] = drupal_schema_fields_sql($entity_info['file']['revision table']);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function file_entity_revisions_menu() {
+  $items = array();
+
+  if (module_exists('revision_scheduler')) {
+    $items['file/%file/schedule'] = array(
+      'title' => 'Schedule',
+      'page callback' => 'revision_scheduler_list_page',
+      'page arguments' => array('file', 1),
+      'access arguments' => array('schedule revisions'),
+      'file' => 'revision_scheduler.pages.inc',
+      'file path' => drupal_get_path('module', 'revision_scheduler'),
+      'type' => MENU_LOCAL_TASK,
+    );
+
+    $items['file/%file/schedule/add'] = array(
+      'title' => 'Add scheduled revision',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('revision_scheduler_add_form', 'file', 1),
+      'access arguments' => array('schedule revisions'),
+      'file' => '/revision_scheduler.pages.inc',
+      'file path' => drupal_get_path('module', 'revision_scheduler'),
+      'type' => MENU_LOCAL_ACTION,
+    );
+  }
+
+  return $items;
+}
+
+/**
+ * Re-implement file_load in order to support loading specific revision.
+ * NOTE: We cannot call it file_entity_load because it collides with
+ * hook_entity_load.
+ *
+ * @param $fid
+ * @param $vid
+ * @param $reset
+ * @return bool|stdClass
+ */
+function _file_entity_load($fid = NULL, $vid = NULL, $reset = FALSE) {
+  $fids = (isset($fid) ? array($fid) : array());
+  $conditions = (isset($vid) ? array('vid' => $vid) : array());
+  $file =  file_load_multiple($fids, $conditions, $reset);
+  return $file ? reset($file) : FALSE;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function file_entity_revisions_admin_paths() {
+  $paths = array(
+    'file/*/schedule' => TRUE,
+    'file/*/schedule/add' => TRUE,
+  );
+
+  return $paths;
+}
+
+/*
+ * Implements hook_cron_queue_info().
+ */
+function file_entity_revisions_cron_queue_info() {
+  $queues['file_entity_revisions_create'] = array(
+    'worker callback' => 'file_entity_revisions_create',
+  );
+
+  return $queues;
+}
+
+/**
+ * Make sure all File Entity get a Revision.
+ *
+ * @param $fid
+ *   A file ID.
+ */
+function file_entity_revisions_create($record) {
+  _file_save_revision($record);
+}
+
+/**
+ * Delete file entity revisions.
+ */
+function file_entity_revision_delete($revision_id, $entity_type) {
+  if ($revision = _file_entity_load(NULL, $revision_id)) {
+    // Prevent deleting the current revision.
+    $file = _file_entity_load($revision->fid);
+    if ($revision_id == $file->vid) {
+      return FALSE;
+    }
+
+   db_delete('file_managed_revisions')->condition('fid', $revision->fid)->condition('vid', $revision->vid)->execute();
+   module_invoke_all('file_revision_delete', $revision);
+   field_attach_delete_revision('file', $revision);
+   return TRUE;
+  }
+
+  return FALSE;
+}
+
+
+/**
+ * Implements hook_file_insert().
+ *
+ * @param stdClass $file
+ */
+function file_entity_revisions_file_insert(stdClass $file) {
+  _file_save_revision($file);
+}
+
+/**
+ * Implements hook_file_file_update().
+ *
+ * @param stdClass $file
+ */
+function file_entity_revisions_file_update(stdClass $file) {
+  _file_save_revision($file, 'vid');
+}
+
+/**
+ * Implements hook_file_delete().
+ *
+ * @param stdClass $file
+ */
+
+function file_entity_revisions_file_delete(stdClass $file) {
+  // Delete all information associated with the file.
+  db_delete('file_managed_revisions')->condition('fid', $file->fid)->execute();
+}
+
+/**
+ * Helper function for saving file revisions.
+ *
+ * @param stdClass $file
+ * @param null $update
+ */
+function _file_save_revision(stdClass $file, $update = NULL) {
+  if (isset($update) && isset($file->vid) && empty($file->new_revision)) {
+    drupal_write_record('file_managed_revisions', $file, $update);
+  }
+  else {
+    // If this is a new revision for a $file that already has a vid we're going
+    // reset that.
+    unset($file->vid);
+    drupal_write_record('file_managed_revisions', $file);
+  }
+
+  // Make sure to always update the VID on the file_manage_table.
+  // TODO: Only do this when a new revision is set to "Default".
+  _file_save_revision_vid($file);
+}
+
+
+function _file_save_revision_vid(stdClass $file) {
+  db_update('file_managed')->fields(array('vid' => $file->vid))->condition('fid', $file->fid)->execute();
+}
+
+/**
+ * Implements hook_entity_revision_operation_info().
+ */
+function file_entity_revisions_entity_revision_operation_info() {
+  $operations['file']['publish'] = array(
+    'label' => t('Publish'),
+    'access arguments' => array('revert revisions'),
+    'callback' => 'file_entity_revisions_operation_publish',
+  );
+
+  $operations['file']['unpublish'] = array(
+    'label' => t('Unpublish'),
+    'access arguments' => array('delete revisions'),
+    'callback' => 'file_entity_revisions_operation_unpublish',
+  );
+
+  $operations['file']['revert'] = array(
+    'label' => t('Revert'),
+    'access arguments' => array('revert revisions'),
+    'callback' => 'file_entity_revisions_operation_revert',
+  );
+
+  $operations['file']['delete'] = array(
+    'label' => t('Delete'),
+    'access arguments' => array('delete revisions'),
+    'callback' => 'file_entity_revisions_operation_delete',
+  );
+
+  return $operations;
+}
+
+/**
+ * Callback for File revision publish operations.
+ *
+ * @param stdClass $file
+ * @see file_entity_revisions_entity_revision_operation_info().
+ */
+function file_entity_revisions_operation_publish($entity, $operation) {
+  if ($revision = _file_entity_load(NULL, $entity->vid)) {
+    $revision->published = TRUE;
+    file_save($revision);
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Callback for File revision unpublish operations.
+ *
+ * @param stdClass $file
+ * @see file_entity_revisions_entity_revision_operation_info().
+ */
+function file_entity_revisions_operation_unpublish($entity, $operation) {
+  if ($revision = _file_entity_load(NULL, $entity->vid)) {
+    $revision->published = FALSE;
+    file_save($revision);
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Callback for File revision revert operations.
+ *
+ * @param stdClass $file
+ * @see file_entity_revisions_entity_revision_operation_info().
+ */
+function file_entity_revisions_operation_revert($entity, $operation) {
+  if ($revision = _file_entity_load(NULL, $entity->vid)) {
+    // If this revision is already the latest leave it alone.
+    $file = _file_entity_load($revision->fid);
+    if ($entity->vid == $file->vid) {
+      return FALSE;
+    }
+
+    // Save our old revision, this way FIELD_LOAD_CURRENT is up to date.
+    file_save($revision);
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Callback for File revision delete operations.
+ *
+ * @param stdClass $file
+ * @see file_entity_revisions_entity_revision_operation_info().
+ */
+function file_entity_revisions_operation_delete($entity, $operation) {
+  entity_revision_delete('file', $entity->vid);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for form_file_entity_edit.
+ */
+function file_entity_revisions_form_file_entity_edit_alter(&$form, &$form_state) {
+
+  if (isset($form['options'])) {
+    // Add new revision checkbox.
+    $form['options']['new_revision'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Create new revision'),
+    );
+  }
+}

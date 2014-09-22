@@ -1,0 +1,67 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function timelinemap_schema() {
+  $schema['timelinemap_embeds'] = array(
+    'description' => 'Embed visualization files (html) made by timelinemap module',
+    'fields' => array(
+      'fid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'File id of the embed file.',
+      ),
+	  'title' => array(
+        'type' => 'varchar',
+        'length' => 60,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Title of the visualization.',
+      ),  
+      'link_view' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Link to the edit form in Views module.',
+      ),
+      'link_vidi' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Link to the edit form in VIDI module.',
+      ),      
+      'datasource' => array(
+        'type' => 'varchar',
+        'length' => 20,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Type of timeline map.',
+      ),        
+      'form_state' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'Form_state for VIDI module.',
+      ),
+      'visualisation_code' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'Iframe for visualization.',
+      ),       
+    ),
+    'primary key' => array('fid'),
+  ); 
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function timelinemap_uninstall() {
+  variable_del('timelinemap_api_key');
+} 

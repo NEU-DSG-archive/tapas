@@ -1,0 +1,13 @@
+name = "Z Apache Solr Real Time Reports"
+description = "Provide reports for data added to Solr."
+package = "Search Toolkit"
+core = 7.x
+
+dependencies[] = apachesolr
+dependencies[] = z_apachesolr_realtime
+; Information added by  packaging script on 2013-11-02
+version = "7.x-1.0"
+core = "7.x"
+project = "z_apachesolr_realtime"
+datestamp = "1383406407"
+

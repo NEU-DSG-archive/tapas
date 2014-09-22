@@ -1,0 +1,73 @@
+<?php
+/**
+ * @file
+ * Authcache support for core search module.
+ */
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @see authcache_search_form_search_form_alter
+ */
+function authcache_search_form_search_block_form_alter(&$form, &$form_state) {
+  authcache_search_form_search_form_alter($form, $form_state);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Remove CSRF token if all roles of the logged in user are allowed to execute
+ * searches without CSRF protection.
+ */
+function authcache_search_form_search_form_alter(&$form, &$form_state) {
+  if (authcache_role_restrict_members_access(variable_get('authcache_search_notoken_roles'))) {
+    unset($form['#token']);
+    unset($form['form_token']);
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function authcache_search_menu() {
+  $items['admin/config/system/authcache/search'] = array(
+    'title' => 'Search Forms',
+    'description' => "Configure authcache support for search module.",
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('authcache_search_admin'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Form API callback: Administer search.
+ */
+function authcache_search_admin($form, &$form_state) {
+  $links = array(
+    '!wikipedia_link' => 'http://en.wikipedia.org/wiki/Cross-site_request_forgery',
+    '!owasp_link' => 'http://owasp.com/index.php/Cross-Site_Request_Forgery_(CSRF)_Prevention_Cheat_Sheet',
+    '!so_link' => 'http://stackoverflow.com/questions/1845305/is-there-a-reason-to-put-tokens-on-a-search-form',
+  );
+
+  $form['hint']['#markup'] = '<p>' . t('In Drupal every form is protected against Cross-site request forgery (CSRF/XSRF) attacks by default. The implementation follows the synchronizer token pattern favored by OWASP. In short whenever a user is logged-in into your site, a unique token gets embedded as a hidden input field into any form. Because this token is user-specific, authcache normally cannot cache a page for authenticated users when there is a form on it.') . '</p>' .
+    '<p>' . t('It follows that if the search-field is visible on many pages &ndash; or even accross the whole site, the cache hit rate will decrease dramatically. However it is debatable whether search forms need to be protected against CSRF attacks at all, because there is little destructive potential caused by executing a search on behalf of another user.') . '</p>' .
+    '<p>' . t('Note: Instead of turning off CSRF protection for the search form you may also consider enabling the Authcache AJAX module. When this module is active, CSRF-tokens are fetched using AJAX after a page was delivered from the cache. However keep in mind that this will result in numerous AJAX requests if your search form appears on many pages.') . '</p>' .
+    '<p>' . t('More information on CSRF prevention is available on the following sites:') . '<ul>' .
+    '<li>' . t('<a href="!wikipedia_link">Wikipedia: Cross-site request forgery</a>', $links) . '</li>' .
+    '<li>' . t('<a href="!owasp_link">OWASP: Cross-Site Request Forgery (CSRF) Prevention Cheat Sheet</a>', $links) . '</li>' .
+    '<li>' . t('<a href="!so_link">stackoverflow.com: Is there a reason to put tokens on a serach form?</a>', $links) . '</li>' .
+    '</ul>';
+
+  $form['authcache_search_notoken_roles'] = array(
+    '#title' => t('Roles without CSRF-protection on search form'),
+    '#description' => t('Turn off CSRF protection of the search form for the selected roles. This option is usefull if your search-box is visible on many pages on the site. When authenticated users '),
+    '#type' => 'authcache_role_restrict',
+    '#default_value' => variable_get('authcache_search_notoken_roles', array()),
+    '#members_only' => TRUE,
+  );
+
+  return system_settings_form($form);
+}

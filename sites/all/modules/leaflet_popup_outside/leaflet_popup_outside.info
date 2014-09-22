@@ -1,0 +1,11 @@
+name = Leaflet Popup Outside
+description = Replaces default Leaflet maps popup infowindow with div outside the map
+core = 7.x
+dependencies[] = leaflet
+
+; Information added by drupal.org packaging script on 2013-10-23
+version = "7.x-1.1+0-dev"
+core = "7.x"
+project = "leaflet_popup_outside"
+datestamp = "1382491229"
+
