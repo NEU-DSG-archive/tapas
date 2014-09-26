@@ -1,5 +1,13 @@
 <?php
 /**
+ * Clear image styles cache.
+ */
+function imagecache_actions_update_7002(&$sandbox) {
+  // We need to clear this cache as many effect callbacks have been renamed.
+  cache_clear_all('image_styles', 'cache');
+}
+
+/**
  * Warn about the soft dependency on system steam wrapper module
  */
 function imagecache_actions_update_7001(&$sandbox) {
