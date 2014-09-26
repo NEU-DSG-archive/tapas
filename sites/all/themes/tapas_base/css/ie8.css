@@ -1,0 +1,20 @@
+/*lte IE 8 */
+#logo{
+	width:100%;
+}
+
+.panel-col-fifty {
+    width: 48%;
+}
+
+#edit-search-block-form--2{
+	padding:10px 0 0 10px;
+}
+
+#search-block-form .form-submit{
+	top:18px;
+}
+
+#show-content-button-unfinished-nodes{
+display:none;
+}

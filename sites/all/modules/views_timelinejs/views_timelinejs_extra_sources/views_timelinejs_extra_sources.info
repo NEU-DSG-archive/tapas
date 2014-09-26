@@ -1,0 +1,13 @@
+name = Views TimelineJS Extra Sources
+description = Adds support for extra source types (including Partial Date)
+dependencies[] = views_timelinejs
+package = Views
+php = 5.3.0
+core = 7.x
+
+; Information added by drupal.org packaging script on 2013-10-19
+version = "7.x-1.0-alpha1+8-dev"
+core = "7.x"
+project = "views_timelinejs"
+datestamp = "1382165235"
+

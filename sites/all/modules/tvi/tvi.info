@@ -1,0 +1,13 @@
+name = TVI: Taxonomy View Integrator
+description = Enables automatic application of views to taxonomy terms and vocabulary.
+core = 7.x
+
+dependencies[] = views
+dependencies[] = taxonomy
+
+; Information added by drupal.org packaging script on 2013-03-11
+version = "7.x-1.0-beta3"
+core = "7.x"
+project = "tvi"
+datestamp = "1363003213"
+

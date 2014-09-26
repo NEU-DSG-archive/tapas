@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Installation related functions for Highcharts module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function highcharts_uninstall() {
+  foreach (array('highcharts_theme', 'highcharts_exporting') as $name) {
+    variable_del($name);
+  }
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function highcharts_requirements($phase) {
+  $requirements = array();
+  // Ensure translations do not break at install time.
+  $t = get_t();
+
+  // Check only during runtime, as during the install phase Libraries may not be
+  // enabled (for example when Highcharts is a dependency of another module or
+  // installation profile).
+  if ($phase == 'runtime') {
+    $library = drupal_get_library('highcharts', 'highcharts-library');
+    $requirements['highcharts'] = array(
+      'title' => $library['title'],
+    );
+
+    // Ensure highcharts library is installed.
+    if (file_exists(DRUPAL_ROOT . '/' . key($library['js']))) {
+      $requirements['highcharts']['value'] = $t('Installed');
+      $requirements['highcharts']['severity'] = REQUIREMENT_OK;
+    }
+    else {
+      $requirements['highcharts']['value'] = $t('Not Installed');
+      $requirements['highcharts']['severity'] = REQUIREMENT_ERROR;
+      $requirements['highcharts']['description'] = $t('The library <a href="@website">%title</a> was not found.', array(
+        '%title' => $library['title'],
+        '@website' => $library['website'],
+      ));
+    }
+  }
+
+  return $requirements;
+}

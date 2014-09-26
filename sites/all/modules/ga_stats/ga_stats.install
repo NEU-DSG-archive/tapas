@@ -1,0 +1,80 @@
+<?php
+/**
+ * Implementation of hook_schema()
+ *
+ * create tables ga_stats_metrics and ga_stats_count
+ */
+function ga_stats_schema() {
+  $schema = array();
+  $schema['ga_stats_count'] = array(
+    'description' => 'Stores counts for different metics',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'description' => 'nid of related node',
+      ),
+      'url' => array(
+        'type' => 'varchar',
+//ADDED got PDOException: SQLSTATE[22001]: String data, right truncated: 1406 Data too long for column 'url' at row 1: INSERT INTO {ga_stats_count} (nid, url, metric, timeframe, count) VALUES (:db_insert_placeholder_0, :db_insert_placeholder_1, :db_insert_placeholder_2, :db_insert_placeholder_3, :db_insert_placeholder_4); Array ( [:db_insert_placeholder_0] => 7004 [:db_insert_placeholder_1] => /forums/betatesting/part4settingupacollectionuploadingcontentaddinginformationaboutthecollectionuploadingteicontentreplacingtei/7004 [:db_insert_placeholder_2] => pageviews [:db_insert_placeholder_3] => today [:db_insert_placeholder_4] => 1 ) in drupal_write_record() (line 7194 of /var/www/html/ptapas/includes/common.inc). Updated manually. Here for reference or recreation
+//        'length' => 128,
+        'length' => 255,
+//END
+        'not null' => FALSE,
+        'description' => 'url of page',
+      ),
+      'metric' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => FALSE,
+        'description' => 'name of metric',
+      ),
+      'timeframe' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => FALSE,
+        'description' => 'timeframe of metric'
+      ),
+      'count' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'number of reads',
+      ),
+    ),
+    'indexes' => array(
+      'ga_stats_metric' => array('metric'),
+      'ga_stats_timeframe' => array('timeframe'),
+      'ga_stats_nid' => array('nid'),
+      'ga_stats_count' => array('count'),
+    )
+  );
+  return $schema;
+}
+
+/*
+ * Implementation of hook_install
+ */
+function ga_stats_install() {
+
+}
+
+/*
+ * Implementation of hook_uninstall
+ */
+function ga_stats_uninstall() {
+  variable_del('ga_stats_email');
+  variable_del('ga_stats_password');
+  variable_del('ga_stats_profile');
+  variable_del('ga_stats_acct_type');
+}
+
+/**
+ * Add an index to the published date value field
+ */
+function ga_stats_update_7101(&$sandbox) {
+  try {
+    db_add_index('ga_stats_count', 'ga_stats_count', array('count'));
+  } catch (FieldException $e) {
+    throw new DrupalUpdateException($e->getMessage());
+  }
+}

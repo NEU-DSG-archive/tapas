@@ -1,0 +1,493 @@
+<?php
+/**
+ * @file
+ * Defines test classes for request builder.
+ */
+
+/**
+ * Request builder test cases.
+ */
+class AuthcacheP13nTestRequestBuilder extends DrupalWebTestCase {
+  protected $profile = 'testing';
+  protected $stubmod;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'Request Builder',
+      'description' => 'Tests for hooks and functions used to build and register request handlers',
+      'group' => 'Authcache Personalization',
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp('authcache_p13n', 'authcache_p13n_test', 'authcache_test_hookstub');
+
+    // HookStub.
+    $this->stubmod = new ModuleStub('authcache_p13n_test');
+  }
+
+  /**
+   * Test whether the given stub passes the invocation verifier.
+   */
+  protected function assertStub(HookStubProxy $stub, $verifier, $message = NULL) {
+    $result = $stub->verify($verifier, $error);
+
+    if (!$message) {
+      $message = t('Verify invocation of hook @hook.', array('@hook' => $stub->hookname()));
+    }
+    if (!$result && is_string($error)) {
+      $message .= ' ' . $error;
+    }
+
+    $this->assertTrue($result, $message);
+  }
+
+  /**
+   * Cover authcache_p13n_request_exists().
+   */
+  public function testGetRequestCallback() {
+    variable_set('authcache_p13n_router', 'AuthcacheP13nTestRequestRouterStub');
+
+    $result = authcache_p13n_request_exists('non-existing-request');
+    $this->assertFalse($result);
+
+    $result = authcache_p13n_request_exists('test/good');
+    $this->assertTrue($result);
+
+    $result = authcache_p13n_request_get_callback('test/bad', array('my-args' => array('some' => 'args')));
+    $this->assertFalse($result);
+
+    $expect = url('http://example.com/authcache.php', array(
+      'absolute' => TRUE,
+      'query' => array(
+        'r' => 'test/good',
+        'a' => array('my-args' => array('some' => 'args')),
+      ),
+    ));
+
+    $result = authcache_p13n_request_get_callback('test/good', array('my-args' => array('some' => 'args')));
+    $this->assertEqual($expect, $result);
+
+    variable_del('authcache_p13n_router');
+  }
+
+  /**
+   * Cover _authcache_p13n_resource_proc_context_providers().
+   */
+  public function testResourceProcessorContextProvider() {
+    $processors = authcache_p13n_authcache_p13n_resource_processors();
+    $stub_observer = new AuthcacheP13nTestStubObserver();
+
+    $second_stub = new AuthcacheP13nTestContextProviderStub($stub_observer);
+    $context_get = $stub_observer->method($second_stub, 'get', 'this is the second stub')
+      ->expect(AuthcacheP13nTestStubVerifyer::once());
+
+    $resource = array(
+      'context providers' => array(
+        'second' => $second_stub,
+        'first' => array(
+          'weight' => -1,
+          '#class' => 'AuthcacheP13nTestContextProviderStub',
+          '#arguments' => array($stub_observer),
+        ),
+      ),
+      'context provider reference' => '@context providers[expand_context_providers]',
+    );
+
+    $factory = new AuthcacheP13nObjectFactory($resource, $processors);
+    $result = $factory->get('context provider reference');
+
+    // Ensure that the array is sorted by weight after the lookup.
+    $this->assertEqual(key($result), 'first');
+    $context_provider = current($result);
+    $this->assertNull($context_provider->get(array()));
+    next($result);
+    $this->assertEqual(key($result), 'second');
+    $context_provider = current($result);
+    $this->assertEqual('this is the second stub', $context_provider->get(array()));
+    $this->assert($context_get->verify($message), $message);
+
+    // Ensure that type of context providers is checked.
+    $resource = array(
+      'context providers' => array(
+        'this is not a context provider instance',
+      ),
+      'context provider reference' => '@context providers[expand_context_providers]',
+    );
+
+    $factory = new AuthcacheP13nObjectFactory($resource, $processors);
+    try {
+      $result = $factory->get('context provider reference');
+      $this->fail('Object factory throws an exception when context providers is of the wrong type.');
+    }
+    catch (AuthcacheP13nObjectFactoryException $e) {
+      unset($e);
+      $this->pass('Object factory throws an exception when context providers is of the wrong type.');
+    }
+
+    // Ensure that class of context providers is checked.
+    $resource = array(
+      'context providers' => array(
+        'AuthcacheP13nTestRequestUrlGeneratorStub',
+      ),
+      'context provider reference' => '@context providers[expand_context_providers]',
+    );
+
+    $factory = new AuthcacheP13nObjectFactory($resource, $processors);
+    try {
+      $result = $factory->get('context provider reference');
+      $this->fail('Object factory throws an exception when context providers is of the wrong class.');
+    }
+    catch (AuthcacheP13nObjectFactoryException $e) {
+      $this->pass('Object factory throws an exception when context providers is of the wrong class.');
+    }
+  }
+
+  /**
+   * Cover authcache_p13n_request_resources().
+   *
+   * Also cover hook_authcache_p13n_request()
+   * and hook_authcache_p13n_request_alter(). Test defaults.
+   */
+  public function testRequestResourcesNullFragments() {
+    $request_info_stub = $this->stubmod->hook('authcache_p13n_request');
+    $request_info_alter_stub = $this->stubmod->hook('authcache_p13n_request_alter');
+
+    $fragment_info = array('null-fragment' => array());
+    $fragment_info_stub = $this->stubmod->hook('authcache_p13n_fragment', $fragment_info);
+
+    $setting_info = array('null-setting' => array());
+    $setting_info_stub = $this->stubmod->hook('authcache_p13n_setting', $setting_info);
+
+    $assembly_info = array(
+      'null-assembly' => array(
+        'partials' => array(
+          'null-partial' => NULL,
+        ),
+      ),
+    );
+    $assembly_info_stub = $this->stubmod->hook('authcache_p13n_assembly', $assembly_info);
+
+    // Setup expectations.
+    $frontcontroller_path = drupal_get_path('module', 'authcache_p13n') . '/frontcontroller/index.php';
+    $expect_resources = array(
+      'frag/null-fragment' => array(
+        'fragment' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'fragment validator' => array(
+          '#type' => 'value',
+          '#value' => '@fragment[accept_instance(AuthcacheP13nFragmentValidatorInterface)]',
+        ),
+        'fragment loader' => array(
+          '#type' => 'value',
+          '#value' => '@fragment[accept_instance(AuthcacheP13nFragmentLoaderInterface)]',
+        ),
+        'fragment access' => array(
+          '#type' => 'value',
+          '#value' => '@fragment[accept_instance(AuthcacheP13nFragmentAccessInterface)]',
+        ),
+        'filters' => array(
+          '#type' => 'value',
+          '#value' => array(
+            'request' => array(
+              '@cache control header',
+            ),
+          ),
+        ),
+        'cache maxage' => array(
+          '#type' => 'value',
+          '#value' => 600,
+        ),
+        'cache granularity' => array(
+          '#type' => 'value',
+          '#value' => AuthcacheP13nCacheGranularity::PER_USER,
+        ),
+        'bootstrap phase' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'context providers' => array(
+          '#type' => 'value',
+          '#value' => array(),
+        ),
+        'cache granularity object' => array(
+          '#class' => 'AuthcacheP13nCacheGranularity',
+          '#arguments' => array(
+            '@cache granularity',
+          ),
+          '#type' => 'class',
+        ),
+        'cache control header' => array(
+          '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@cache maxage',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'content builder' => array(
+          '#class' => 'AuthcacheP13nFragmentBuilder',
+          '#arguments' => array(
+            '@fragment',
+            '@fragment validator',
+            '@fragment loader',
+            '@fragment access',
+          ),
+          '#type' => 'class',
+        ),
+        'request validator' => array(
+          '#type' => 'value',
+          '#value' => '@content builder',
+        ),
+        'content encoder' => array(
+          '#class' => 'AuthcacheP13nHTMLContent',
+          '#type' => 'class',
+        ),
+        'handler' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestHandler',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+            '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+            '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+            '@filters',
+            '@bootstrap phase',
+            '@context providers[expand_context_providers]',
+          ),
+          '#type' => 'class',
+        ),
+        'frontcontroller' => array(
+          '#value' => $frontcontroller_path,
+          '#type' => 'value',
+        ),
+        'url generator' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+          '#arguments' => array(
+            '@frontcontroller',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'services' => array(
+          '#class' => 'AuthcacheP13nDefaultCoreService',
+          '#type' => 'class',
+        ),
+      ),
+      'setting/null-setting' => array(
+        'setting' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'setting validator' => array(
+          '#type' => 'value',
+          '#value' => '@setting[accept_instance(AuthcacheP13nSettingValidatorInterface)]',
+        ),
+        'setting access' => array(
+          '#type' => 'value',
+          '#value' => '@setting[accept_instance(AuthcacheP13nSettingAccessInterface)]',
+        ),
+        'setting target' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'filters' => array(
+          '#type' => 'value',
+          '#value' => array(
+            'request' => array(
+              '@cache control header',
+            ),
+          ),
+        ),
+        'cache maxage' => array(
+          '#type' => 'value',
+          '#value' => 600,
+        ),
+        'cache granularity' => array(
+          '#type' => 'value',
+          '#value' => AuthcacheP13nCacheGranularity::PER_USER,
+        ),
+        'bootstrap phase' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'context providers' => array(
+          '#type' => 'value',
+          '#value' => array(),
+        ),
+        'cache granularity object' => array(
+          '#class' => 'AuthcacheP13nCacheGranularity',
+          '#arguments' => array(
+            '@cache granularity',
+          ),
+          '#type' => 'class',
+        ),
+        'cache control header' => array(
+          '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@cache maxage',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'content builder' => array(
+          '#class' => 'AuthcacheP13nSettingBuilder',
+          '#arguments' => array(
+            '@setting',
+            '@setting validator',
+            '@setting access',
+            '@setting target',
+          ),
+          '#type' => 'class',
+        ),
+        'request validator' => array(
+          '#type' => 'value',
+          '#value' => '@content builder[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+        ),
+        'content encoder' => array(
+          '#class' => 'AuthcacheP13nJSONContent',
+          '#type' => 'class',
+        ),
+        'handler' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestHandler',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+            '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+            '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+            '@filters',
+            '@bootstrap phase',
+            '@context providers[expand_context_providers]',
+          ),
+          '#type' => 'class',
+        ),
+        'frontcontroller' => array(
+          '#value' => $frontcontroller_path,
+          '#type' => 'value',
+        ),
+        'url generator' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+          '#arguments' => array(
+            '@frontcontroller',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'services' => array(
+          '#class' => 'AuthcacheP13nDefaultCoreService',
+          '#type' => 'class',
+        ),
+      ),
+      'asm/null-assembly' => array(
+        'partials' => array(
+          '#type' => 'value',
+          '#value' => array(
+            'null-partial' => NULL,
+          ),
+        ),
+        'filters' => array(
+          '#type' => 'value',
+          '#value' => array(
+            'request' => array(
+              '@cache control header',
+            ),
+          ),
+        ),
+        'cache maxage' => array(
+          '#type' => 'value',
+          '#value' => 600,
+        ),
+        'cache granularity' => array(
+          '#type' => 'value',
+          '#value' => AuthcacheP13nCacheGranularity::PER_USER,
+        ),
+        'bootstrap phase' => array(
+          '#type' => 'value',
+          '#value' => NULL,
+        ),
+        'context providers' => array(
+          '#type' => 'value',
+          '#value' => array(),
+        ),
+        'cache granularity object' => array(
+          '#class' => 'AuthcacheP13nCacheGranularity',
+          '#arguments' => array(
+            '@cache granularity',
+          ),
+          '#type' => 'class',
+        ),
+        'cache control header' => array(
+          '#class' => 'AuthcacheP13nAddCacheControlHeaderFilter',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@cache maxage',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'content builder' => array(
+          '#class' => 'AuthcacheP13nFragmentAssemblyBuilder',
+          '#arguments' => array(
+            '@partials[expand_partials]',
+          ),
+          '#type' => 'class',
+        ),
+        'request validator' => array(
+          '#type' => 'value',
+          '#value' => '@content builder[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+        ),
+        'content encoder' => array(
+          '#class' => 'AuthcacheP13nJSONContent',
+          '#type' => 'class',
+        ),
+        'handler' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestHandler',
+          '#arguments' => array(
+            '@services[require_instance(AuthcacheP13nCoreServiceInterface)]',
+            '@request validator[accept_instance(AuthcacheP13nRequestValidatorInterface)]',
+            '@content builder[require_instance(AuthcacheP13nContentBuilderInterface)]',
+            '@content encoder[require_instance(AuthcacheP13nContentEncoderInterface)]',
+            '@filters',
+            '@bootstrap phase',
+            '@context providers[expand_context_providers]',
+          ),
+          '#type' => 'class',
+        ),
+        'frontcontroller' => array(
+          '#value' => $frontcontroller_path,
+          '#type' => 'value',
+        ),
+        'url generator' => array(
+          '#class' => 'AuthcacheP13nDefaultRequestUrlGenerator',
+          '#arguments' => array(
+            '@frontcontroller',
+            '@cache granularity object[require_instance(AuthcacheP13nCacheGranularity)]',
+          ),
+          '#type' => 'class',
+        ),
+        'services' => array(
+          '#class' => 'AuthcacheP13nDefaultCoreService',
+          '#type' => 'class',
+        ),
+      ),
+    );
+
+    $resources = authcache_p13n_request_resources();
+    $this->assertEqual($expect_resources, $resources);
+
+    $this->assertStub($request_info_stub, HookStub::once());
+    $this->assertStub($request_info_alter_stub, HookStub::once());
+    $this->assertStub($fragment_info_stub, HookStub::once());
+    $this->assertStub($setting_info_stub, HookStub::once());
+    $this->assertStub($assembly_info_stub, HookStub::once());
+  }
+}

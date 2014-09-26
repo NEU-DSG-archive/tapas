@@ -1,0 +1,10 @@
+name = Vocabulary Access
+description = This only adds per vocabulary permission to vocabulary's taxonomy/<vid> pages, just that. 
+core = 6.x
+dependancies[] = vocabulary
+; Information added by drupal.org packaging script on 2011-03-11
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "vocabulary"
+datestamp = "1299845860"
+

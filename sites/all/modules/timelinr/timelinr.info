@@ -1,0 +1,15 @@
+name = jQuery timelinr integration
+description = Provides a simple timeline views style for jQuery timelinr Plugin - http://bit.ly/omZeeY
+package = Views
+dependencies[] = views
+
+core = 7.x
+files[] = timelinr_views_plugin_style.inc
+files[] = timelinr_plugin_row_timelinrfields.inc
+
+; Information added by drupal.org packaging script on 2013-10-19
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "timelinr"
+datestamp = "1382147171"
+

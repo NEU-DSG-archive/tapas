@@ -1,0 +1,14 @@
+name = Highcharts views
+description = Highcharts Views integration
+core = 7.x
+dependencies[] = highcharts
+dependencies[] = views
+files[] = highcharts_views_plugin_style_highcharts.inc
+files[] = highcharts_views.options.inc
+
+; Information added by drupal.org packaging script on 2013-09-30
+version = "7.x-2.x-dev"
+core = "7.x"
+project = "highcharts"
+datestamp = "1380581902"
+

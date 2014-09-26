@@ -1,0 +1,10 @@
+name = Color Theme
+description = A small module that changes the current theme on the theme settings page to the theme whose settings are being viewed.
+core = 7.x
+dependencies[] = color
+; Information added by drupal.org packaging script on 2011-01-06
+version = "7.x-1.0"
+core = "7.x"
+project = "colortheme"
+datestamp = "1294296951"
+

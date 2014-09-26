@@ -1,0 +1,14 @@
+name = "Biblio Advanced Import"
+description = "Identification of duplicates across different import formats, updating of existing nodes, cite id generation."
+core = 7.x
+package = Biblio
+dependencies[] = biblio
+
+files[] = lib/isbntest.class.php
+
+; Information added by drupal.org packaging script on 2013-07-05
+version = "7.x-1.0-alpha3+0-dev"
+core = "7.x"
+project = "biblio_advanced_import"
+datestamp = "1373027216"
+

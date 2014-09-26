@@ -1,0 +1,16 @@
+607a608,622
+>   <lib dir="${solr.home:./contrib/extraction/lib}" />
+>   <lib dir="${solr.home:./dist/}" />
+>   <requestHandler name="/update/extract" 
+>                   startup="lazy"
+>                   class="solr.extraction.ExtractingRequestHandler" >
+>     <lst name="defaults">
+>       <!-- All the main content goes into "text"... if you need to return
+>            the extracted text or do highlighting, use a stored field. -->
+>       <str name="lowernames">true</str>
+>       <str name="uprefix">ignored_</str>
+>       <str name="fmap.content">content</str>
+>       <!--str name="fmap.stream_name">label</str>
+>       <str name="fmap.stream_size"></str-->
+>     </lst>
+>   </requestHandler>

@@ -1,0 +1,11 @@
+name = XSL formatter
+description = Renders the content of a text field by passing it through an XSL tranformation first.
+core = 7.x
+package = coders.co.nz
+
+; Information added by drupal.org packaging script on 2013-05-17
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "xsl_formatter"
+datestamp = "1368826474"
+

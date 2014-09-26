@@ -1,0 +1,31 @@
+<?php
+/**
+ *  Implements hook_form_alter.
+ */
+function default_menu_link_form_alter(&$form, &$form_state, $form_id) {
+  // Set this to the default if this is the node add form
+  if (substr($form_id, -10) == '_node_form' && $form['nid']['#value'] == NULL) {
+    $content_type = substr($form_id, 0, -10);
+    $form['menu']['enabled']['#default_value'] = variable_get('default_menu_link_' . $content_type . '_enabled', FALSE);
+  }
+}
+
+/**
+ *  Implements hook_form_FORM_ID_alter.
+ */
+function default_menu_link_form_node_type_form_alter(&$form, &$form_state, $form_id) {
+  $form['menu']['default_menu_link_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Default the "Provide a menu link" item to checked.'),
+    '#default_value' => variable_get('default_menu_link_' . $form['#node_type']->type . '_enabled', FALSE),
+  );
+  $form['#submit'][] = 'default_menu_link_type_form_submit';
+}
+
+/**
+ *  Trigger variable save on node type form submission.
+ */
+function default_menu_link_type_form_submit($form, &$form_state) {
+  variable_set('default_menu_link_' . $form_state['values']['type'] . '_enabled', $form_state['values']['default_menu_link_enabled']);
+  return;
+}

@@ -1,0 +1,14 @@
+name = APC Admin
+description = Manage APC from Drupal administration interface
+package = Performance
+core = 7.x
+files[] = apc_admin.module
+dependencies[] = libraries
+configure = admin/config/development/performance/apc_admin
+
+; Information added by drupal.org packaging script on 2013-02-17
+version = "7.x-1.0"
+core = "7.x"
+project = "apc_admin"
+datestamp = "1361061816"
+

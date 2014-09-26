@@ -1,0 +1,41 @@
+<?php
+/**
+ * @file
+ * User Disk Quota installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function user_disk_quota_schema() {
+  $schema['user_disk_quota_user'] = array(
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The user uid.',
+      ),
+      'quota_limit' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The user quota limit.',
+      ),
+    ),
+    'primary key' => array('uid'),
+    'indexes' => array(
+      'uid' => array('uid'),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function user_disk_quota_uninstall() {
+  $roles = user_roles();
+  foreach ($roles as $rid => $role) {
+    variable_del('user_disk_quota_role_' . $rid);
+  }
+  variable_del('user_disk_quota_warning_percentage');
+}

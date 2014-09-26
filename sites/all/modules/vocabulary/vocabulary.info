@@ -1,0 +1,14 @@
+name = Vocabulary
+description = Additional vocabulary stuff
+version = VERSION
+core = 7.x
+dependancies[] = taxonomy
+files[] = vocabulary.module
+files[] = vocabulary.pages.inc
+
+; Information added by drupal.org packaging script on 2011-03-11
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "vocabulary"
+datestamp = "1299845860"
+

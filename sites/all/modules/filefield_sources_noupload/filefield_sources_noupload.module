@@ -1,0 +1,53 @@
+<?php
+/**
+ * Implementation of hook_filefield_sources_info().
+ */
+function filefield_sources_noupload_filefield_sources_info() {
+  $source = array();
+  $source['noupload'] = array(
+    'name' => t('Disable upload capability in file widget'),
+    'label' => NULL,
+    'description' => NULL,
+    'process' => 'filefield_sources_noupload_process',
+  );
+  return $source;
+}
+
+/**
+ * A #process callback to extend the filefield_widget element type.
+ */
+function filefield_sources_noupload_process($element) {
+  unset($element['upload'], $element['upload_button']);
+  $element['#pre_render'][] = 'filefield_sources_noupload_pre_render';
+  return $element;
+}
+
+function theme_filefield_sources_noupload_filefield_sources_list($variables) {
+  $element = $variables['element'];
+  $sources = $variables['sources'];
+  
+  unset($sources['noupload']);
+  
+  foreach ($sources as $name => $source) {
+    $links[] = '<a href="#" onclick="return false;" title="' . $source['description'] . '" id="' . $element['#id'] . '-' . $name . '-source" class="filefield-source filefield-source-' . $name . '">' . $source['label'] . '</a>';
+  }
+  return '<div class="filefield-sources-list">' . implode(' | ', $links) . '</div>';
+}
+
+/**
+ * Implementation of hook_theme_registry_alter().
+ */
+function filefield_sources_noupload_theme_registry_alter(&$theme_registry) {
+  $theme_registry['filefield_sources_list']['theme path'] = drupal_get_path('module', 'filefield_sources_noupload');
+  $theme_registry['filefield_sources_list']['function'] = 'theme_filefield_sources_noupload_filefield_sources_list';
+}
+
+/**
+ * A #pre_render function to hide sources if a file is currently uploaded.
+ * 
+ * Add module JS here to ensure that it is added after filefield_sources JS
+ */
+function filefield_sources_noupload_pre_render($element) {
+  drupal_add_js(drupal_get_path('module', 'filefield_sources_noupload') .'/filefield_sources_noupload.js');
+  return $element;
+}

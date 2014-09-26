@@ -1,0 +1,109 @@
+<?php
+/**
+ * @file
+ * Authcache support for forum module.
+ */
+
+/**
+ * Implements hook_authcache_p13n_assembly().
+ */
+function authcache_forum_authcache_p13n_assembly() {
+  return array(
+    'forum-list' => array(
+      'partials' => array(
+        'new-topics' => 'AuthcacheForumListNewTopicsFragment',
+      ),
+      'cache maxage' => 600,
+    ),
+    'forum-topic-list' => array(
+      'partials' => array(
+        'new-comments' => 'AuthcacheForumNumNewCommentsFragment',
+      ),
+      'cache maxage' => 600,
+    ),
+    'forum-interval' => array(
+      'partials' => array(
+        'interval' => 'AuthcacheForumIntervalFragment',
+      ),
+      'cache maxage' => 60,
+      'cache granularity' => AuthcacheP13nCacheGranularity::PER_PAGE,
+    ),
+  );
+}
+
+/**
+ * Process forum template variables.
+ *
+ * Remove "new" marker
+ *
+ * @see forum.module
+ */
+function authcache_forum_preprocess_forum_list(&$variables) {
+  global $user;
+
+  // Defer the "new" marker for user.
+  if ($user->uid && authcache_page_is_cacheable()) {
+    foreach ($variables['forums'] as $forum) {
+      // Remove personalized information from forum list.
+      $forum->new_text = '';
+      $forum->new_url = '';
+      $forum->new_topics = '';
+      $forum->icon_class = 'default';
+      $forum->icon_title = t('No new posts');
+      $forum->old_topics = $forum->num_topics;
+
+      if ($forum->num_topics) {
+        $forum->num_topics .= '<br/>';
+        $forum->num_topics .= theme('authcache_p13n_partial', array(
+          'assembly' => 'forum-list',
+          'partial' => 'new-topics',
+          'param' => $forum->tid,
+        ));
+      }
+    }
+  }
+}
+
+/**
+ * Process forum template variables.
+ *
+ * Remove "new" marker.
+ *
+ * @see forum.module
+ */
+function authcache_forum_preprocess_forum_topic_list(&$variables) {
+  global $user;
+
+  if ($user->uid && authcache_page_is_cacheable()) {
+    foreach ($variables['topics'] as $topic) {
+      // Replace "new" icons.  If you are using custom icons, make sure
+      // the filenames have the same format as Drupal core.
+      $topic->icon = strtr($topic->icon,
+        array('hot-new' => 'hot', 'new' => 'default'));
+
+      if ($topic->comment_count) {
+        $topic->comment_count .= '<br/>';
+        $topic->comment_count .= theme('authcache_p13n_partial', array(
+          'assembly' => 'forum-topic-list',
+          'partial' => 'new-comments',
+          'param' => $topic->nid,
+        ));
+        $topic->new_text = '';
+        $topic->new_url = '';
+      }
+    }
+  }
+}
+
+/**
+ * Relative date format.
+ */
+function authcache_forum_preprocess_forum_submitted(&$variables) {
+  if (authcache_page_is_cacheable() && !empty($variables['time'])) {
+    $variables['time'] = theme('authcache_p13n_partial', array(
+      'assembly' => 'forum-interval',
+      'partial' => 'interval',
+      'param' => $variables['topic']->created,
+    ));
+  }
+}

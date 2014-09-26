@@ -1,0 +1,16 @@
+<?php
+
+/**
+ *
+ * @file
+ * Install file for File manager.
+ */
+
+// $Id$
+
+/**
+ * Implements hook_uninstall().
+ */
+function file_manager_uninstall() {
+  db_query('DELETE FROM {variable} WHERE name LIKE "file_manager_%"');
+}

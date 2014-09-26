@@ -1,0 +1,107 @@
+<?php
+/**
+ * @file
+ * Functions for shield module
+ */
+
+/**
+ * Implements hook_perm().
+ */
+function shield_permission() {
+  return array(
+    'administer shield' => array(
+      'title' => t('Administer shield module'),
+      'description' => t('Perform administration tasks for shield module.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function shield_menu() {
+  $items['admin/config/system/shield'] = array(
+    'title' => 'Shield',
+    'description' => 'Manage the settings of PHP Authentication shield.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('shield_admin_settings'),
+    'weight' => 10,
+    'access arguments' => array('administer shield'),
+    'file' => 'shield.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_boot().
+ */
+function shield_boot() {
+  $user = variable_get('shield_user', '');
+  if (!$user) {
+    return;
+  }
+
+  // allow Drush to bypass Shield
+  if (drupal_is_cli() && variable_get('shield_allow_cli', 1) == 1) {
+    return;
+  }
+//ADDED from https://drupal.org/files/allow_cron-2030017-11.patch in regards to https://drupal.org/node/2030017
+    // Allow cron to bypass Shield
+    if (basename($_SERVER['PHP_SELF']) == 'cron.php' && variable_get('shield_allow_cron', 1) == 1) {
+      return;
+    }
+//END
+  // Allow excluded paths to bypass Shield protection.
+  $excluded_paths = variable_get('shield_excluded_paths', '');
+  if (!empty($excluded_paths)) {
+    require_once './includes/unicode.inc';
+    require_once './includes/path.inc';
+    require_once './includes/locale.inc';
+    require_once './includes/language.inc';
+    drupal_language_initialize();
+    $pages = drupal_strtolower($excluded_paths);
+    $path = drupal_strtolower(drupal_get_path_alias($_GET['q']));
+    // Compare the lowercase internal and lowercase path alias (if any).
+    $page_match = drupal_match_path($path, $pages);
+
+    if ($path != $_GET['q']) {
+      $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+    }
+
+    // We're on a path that is excluded from Shield protection.
+    if ($page_match) {
+      return;
+    }
+  }
+
+  $pass = variable_get('shield_pass', '');
+  if (substr(php_sapi_name(), 0, 3) == 'cgi') {
+    // We have (some sort of) CGI.
+    if (isset($_SERVER['FCGI_ROLE'])) {
+      // We have FastCGI.
+      $auth_var = 'REMOTE_USER';
+    }
+    else {
+      // We have plain old CGI.
+      $auth_var = 'REDIRECT_REMOTE_USER';
+    }
+    if (!empty($_SERVER[$auth_var])) {
+      list($redir_user, $redir_pw) = explode(':' , base64_decode(substr($_SERVER[$auth_var], 6)));
+      if ($redir_user == $user && $redir_pw == $pass) {
+        return;
+      }
+    }
+  }
+  else {
+    // We have mod_php.
+    if (!empty($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW']) && $_SERVER['PHP_AUTH_USER'] == $user && $_SERVER['PHP_AUTH_PW']   == $pass) {
+      return;
+    }
+  }
+
+  $print = variable_get('shield_print', 'Hello, user: [user], pass: [pass]!');
+  header(sprintf('WWW-Authenticate: Basic realm="%s"', strtr($print, array('[user]' => $user, '[pass]' => $pass))));
+  header('HTTP/1.0 401 Unauthorized');
+  exit;
+}

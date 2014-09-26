@@ -1,0 +1,14 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Panels Hash Cache module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function panels_hash_cache_schema() {
+  $schema['panels_hash_cache'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}

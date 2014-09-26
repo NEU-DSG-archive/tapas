@@ -1,0 +1,19 @@
+<?php
+/**
+ * @file
+ * Installation file for shield module
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function shield_uninstall() {
+  variable_del('shield_allow_cli');
+//ADDED from https://drupal.org/files/allow_cron-2030017-11.patch in regards to https://drupal.org/node/2030017
+  variable_del('shield_allow_cron');
+//END
+  variable_del('shield_user');
+  variable_del('shield_pass');
+  variable_del('shield_print');
+  variable_del('shield_excluded_paths');
+}

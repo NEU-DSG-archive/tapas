@@ -1,0 +1,14 @@
+name = "Z Apache Solr Real Time"
+description = "Insert, Update and delete entities in real time.<br/><b>Z was added for weight as node access permissions were not updated correctly. Tried weight with standard mods but didn't work. Could also try these methods - https://drupal.org/node/110238 - but this works and there are other modifications anyway.</b>"
+package = "Search Toolkit"
+core = 7.x
+
+dependencies[] = apachesolr
+files[] = tests/z_apachesolr_realtime.test
+
+; Information added by  packaging script on 2013-11-02
+version = "7.x-1.0"
+core = "7.x"
+project = "z_apachesolr_realtime"
+datestamp = "1383406407"
+

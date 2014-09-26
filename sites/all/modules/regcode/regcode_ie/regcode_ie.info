@@ -1,0 +1,19 @@
+; $Id: regcode_ie.info,v 1.1.2.1 2010/03/06 11:42:17 aidan Exp $
+name = Import and export
+description = Allows bulk import and export of registration codes
+core = 7.x
+package = Registration
+
+dependencies[] = regcode
+dependencies[] = views_data_export
+
+files[] = regcode_ie.module
+files[] = regcode_ie.views.inc
+files[] = regcode_ie.views_default.inc
+
+; Information added by drupal.org packaging script on 2011-10-15
+version = "7.x-1.0"
+core = "7.x"
+project = "regcode"
+datestamp = "1318678302"
+

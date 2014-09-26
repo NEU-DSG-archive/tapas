@@ -1,0 +1,12 @@
+<?php
+/**
+* Implements hook_install().
+*/
+function default_menu_link_install() {
+  // Set the weight to 1
+  db_update('system')
+    ->fields(array('weight' => 1))
+    ->condition('type', 'module')
+    ->condition('name', 'default_menu_link')
+    ->execute();
+}

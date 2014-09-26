@@ -1,0 +1,4 @@
+(function ($) {
+  // JavaScript code.
+})(jQuery);
+

@@ -1,0 +1,16 @@
+name = Transformers Pipelines
+description = Pipeline UI to map actions.
+package = Rules
+version = VERSION
+core = 7.x
+files[] = transformers_pipelines.module
+files[] = transformers_pipelines.inc
+files[] = transformers_pipelines.ajax.inc
+dependencies[] = rules
+
+; Information added by drupal.org packaging script on 2011-03-03
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "transformers"
+datestamp = "1299154517"
+

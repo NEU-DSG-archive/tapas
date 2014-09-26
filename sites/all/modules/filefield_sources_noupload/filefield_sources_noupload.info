@@ -1,0 +1,12 @@
+name = FileField Sources Disable Upload
+description = Adds the option to disable the upload widget from specific fields.
+dependencies[] = filefield_sources
+package = Fields
+core = 7.x
+
+; Information added by drupal.org packaging script on 2012-05-03
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "filefield_sources_noupload"
+datestamp = "1336047400"
+

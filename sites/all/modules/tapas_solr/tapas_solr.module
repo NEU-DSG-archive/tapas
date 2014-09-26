@@ -1,0 +1,317 @@
+<?php
+// $Id: tapas_solr.module
+
+/**
+ * @file
+ * Custom functions for TAPAS SOLR Integration
+ */
+ //ADDED from https://drupal.org/node/1816462
+/**
+ * Implements hook_node_insert().
+
+function tapas_solr_node_insert($node) {
+  _custom_helper_apachesolr_index_immediately($node, 'node');
+}
+/**
+ * Implements hook_node_update().
+
+function tapas_solr_node_update($node) {
+  _custom_helper_apachesolr_index_immediately($node, 'node');
+}
+/**
+ * Helper function to send entities to apachesolr for immediate index.
+
+function _custom_helper_apachesolr_index_immediately($entity, $type) {
+  $env_id = apachesolr_default_environment();
+  $bundles_to_index = apachesolr_get_index_bundles($env_id, $type);
+  // Check if entity should be indexed
+  $info = entity_get_info($type);
+  if (!empty($info['entity keys']['bundle'])) {
+    $bundle = $entity->{$info['entity keys']['bundle']};
+  }
+  else {
+    $bundle = $type;
+  }
+  if (!in_array($bundle, $bundles_to_index)) {
+    return;
+  }
+  // Entity should be indexed, so send to solr
+  $ids = entity_extract_ids($type, $entity);
+  $item = new stdClass();
+  $item->entity_type = $type;
+  $item->entity_id = $ids[0];
+  module_load_include('inc', 'apachesolr', 'apachesolr.index');
+  $doc = apachesolr_index_entity_to_documents($item, $env_id);
+  apachesolr_index_send_to_solr($env_id, $doc);
+}
+*/
+//END
+
+function get_name($i) {
+    return $i['raw']['value'];
+}
+//ADDED Dont think I'm using these anymore. Just here in case I need them again
+function hasSolrField($str, $array) {
+  $filter_query=false;
+  foreach ($array as $key => $value) {
+     if (strpos($value, $str) !== false && strpos($str, 'dm_') === false) {
+        $term=explode(":",$array[$key]);
+        $filter_query=$filter_query.$term[1].',';
+     }elseif(strpos($str, 'dm_') !== false){
+		$time=explode(":[",$array[$key]);
+        $filter_query=$filter_query.'['.$time[1].',';
+	 }
+  }
+  $filter_query=rtrim($filter_query,',');
+  return $filter_query;
+}
+function tapas_views_solrizer($solr_field){
+	if(isset($solr_field)){
+if(strpos($_SERVER['QUERY_STRING'], $solr_field) !== false){
+parse_str($_SERVER['QUERY_STRING'], $get_array);
+//echo 'get-array: <pre>';
+//print_r($get_array);
+$get_array1=$get_array['f'];
+//echo '</pre>get-array1: <pre>';
+//print_r($get_array1);
+$to_pass=hasSolrField($solr_field,$get_array1);
+//echo '</pre>to-pass: <pre>';
+//exit($to_pass);
+return $to_pass;
+}else{
+	return 'all';
+}
+	}
+}
+//END
+//A quick fix for bad h1 tags in index
+function tapas_solr_node_submit($node){
+	if(isset($node->body['und'][0]['value'])){
+//		echo "<pre>";
+//		exit(print_r($node));
+//$node->body['und'][0]['value']=strip_tags($node->body['und'][0]['value'], '<a> <em> <strong> <cite> <blockquote> <code> <ul> <ol> <li> <dl> <dt> <dd> <strike> <h2><h3><h4>');
+//			node_save($node);
+	}
+	
+}
+function tapas_solr_apachesolr_index_document_build($document, $entity, $entity_type) {
+  if ($entity_type == 'node') {
+    if(isset($entity->field_title['und'][0]['value'])){
+      $document->addField('ts_field_title', $entity->field_title['und'][0]['value']);
+    }else{
+drupal_set_message($entity->title);
+	  $document->addField('ts_field_title', $entity->title);
+	}
+    if(isset($entity->body['und'][0]['value'])){
+      $document->addField('ts_body', $entity->body['und'][0]['value']);
+    }
+    if(isset($entity->field_dc_title['und'][0]['value'])){
+      $document->addField('ts_field_dc_title', $entity->field_dc_title['und'][0]['value']);
+    }
+    if(isset($entity->field_dc_source_full_text['und'][0]['value'])){
+      $document->addField('ts_field_dc_source_full_text', $entity->field_dc_source_full_text['und'][0]['value']);
+    }
+    if(isset($entity->field_dc_description['und'][0]['value'])){
+      $document->addField('ts_field_dc_description', $entity->field_dc_description['und'][0]['value']);
+    }
+    if(isset($entity->field_dc_alternative['und'][0]['value'])){
+      $field_dc_alternative='';
+      for($i = 0; $i < count($entity->field_dc_alternative['und']); ++$i){
+        $field_dc_alternative.=$entity->field_dc_alternative['und'][$i]['value'];
+      }
+      $document->addField('ts_field_dc_alternative', $field_dc_alternative);
+    }
+    if(isset($entity->field_dc_contributor['und'][0]['value'])){
+      $field_dc_contributor='';
+      for($i = 0; $i < count($entity->field_dc_contributor['und']); ++$i){
+        $field_dc_contributor.=$entity->field_dc_contributor['und'][$i]['value'].'; ';
+      }
+      $document->addField('ts_field_dc_contributor', $field_dc_contributor);
+    }
+    if(isset($entity->field_dc_creator['und'][0]['value'])){
+      $field_dc_creator='';
+      for($i = 0; $i < count($entity->field_dc_creator['und']); ++$i){
+        $field_dc_creator.=$entity->field_dc_creator['und'][$i]['value'].'; ';
+      }
+      $document->addField('ts_field_dc_creator', $field_dc_creator);
+    }
+    if(isset($entity->field_dc_date_display['und'][0]['value'])){
+      $document->addField('ts_field_dc_date_display', $entity->field_dc_date_display['und'][0]['value']);
+    }
+    if(isset($entity->field_dc_coverage_temporal_displ['und'][0]['value'])){
+      $document->addField('ts_field_dc_coverage_temporal_displ', $entity->field_dc_coverage_temporal_displ['und'][0]['value']);
+    }
+    if(isset($entity->field_dd_classification['und'][0]['tid']) || isset($entity->field_getty_aat_genre_dc_subject['und'][0]['tid']) || isset($entity->field_loc_classification['und'][0]['tid']) || isset($entity->field_dc_subject['und'][0]['tid'])){
+      $field_subjects1='';
+	  if(isset($entity->field_dd_classification['und'][0]['tid'])){
+      for($i = 0; $i < count($entity->field_dd_classification['und']); ++$i){
+        $field_subjects1.=$entity->field_dd_classification['und'][$i]['tid'].', ';
+      }
+	  }
+      $field_subjects2='';
+	  if(isset($entity->field_getty_aat_genre_dc_subject['und'][0]['tid'])){
+      for($i = 0; $i < count($entity->field_getty_aat_genre_dc_subject['und']); ++$i){
+        $field_subjects2.=$entity->field_getty_aat_genre_dc_subject['und'][$i]['tid'].', ';
+      }
+	  }
+      $field_subjects3='';
+	  if(isset($entity->field_loc_classification['und'][0]['tid'])){
+      for($i = 0; $i < count($entity->field_loc_classification['und']); ++$i){
+        $field_subjects3.=$entity->field_loc_classification['und'][$i]['tid'].', ';
+      }
+	  }
+      $field_subjects4='';
+	  if(isset($entity->field_dc_subject['und'][0]['tid'])){
+      for($i = 0; $i < count($entity->field_dc_subject['und']); ++$i){
+        $field_subjects4.=$entity->field_dc_subject['und'][$i]['tid'].', ';
+      }
+	  }
+      $field_subjects='';
+      $field_subjects=$field_subjects1.$field_subjects2.$field_subjects3.$field_subjects4;
+$field_subjects=rtrim($field_subjects, ', ');
+$field_subjects = preg_replace('/\s+/', '', $field_subjects);
+//$field_subjects=(string) $field_subjects;
+//$field_subjects=str_replace("Array", '', $field_subjects);
+//print $field_subjects;
+$tids='';
+$tids = explode(',',$field_subjects);
+//print_r($tids);
+$names='';
+foreach ($tids as $tid) {
+$term = taxonomy_term_load($tid);
+$name = $term->name;
+//if($name!=''){
+$names.=$name.", ";
+//}
+}
+//print_r($names);
+//$terms='';
+//$terms = taxonomy_term_load_multiple($tids);
+//$names='';
+//foreach ($terms as $term) {
+//  $names.= $term->name.', ';
+//}
+$names=rtrim($names, ', ');
+$field_subjects='';
+      $document->addField('ts_field_subjects', $names);
+    }
+
+/*
+//DATES
+field_dc_date
+field_dc_coverage_temporal
+*/
+  }
+}
+
+
+	
+function tapas_solr_apachesolr_entity_info_alter(&$entity_info) {
+//  $entity_info['field_title']['indexable'] = TRUE;
+//  $entity_info['field_institution']['indexable'] = TRUE;
+//  $entity_info['body']['indexable'] = TRUE;
+//  $entity_info['field_author_tapas']['indexable'] = TRUE;
+}
+
+function tapas_solr_apachesolr_index_document_build_node(ApacheSolrDocument $document, $entity, $entity_type, $env_id=NULL) {
+  if ($entity->type == 'tei_content') {
+    $entity_date = field_get_items('node', $entity, 'field_dc_date');
+//	exit(print_r($entity_date));
+    if (!empty($entity_date)) {
+      $document->addField('ds_field_dc_date', apachesolr_date_iso(strtotime($entity_date[0]['value'])));
+    }
+    $entity_period = field_get_items('node', $entity, 'field_dc_coverage_temporal');
+    if (!empty($entity_period)) {
+      $document->addField('dds_field_dc_coverage_temporal_start', apachesolr_date_iso(strtotime($entity_period[0]['value'])));
+      $document->addField('dds_field_dc_coverage_temporal_end', apachesolr_date_iso(strtotime($entity_period[0]['value2'])));
+    }
+    $entity_creator = field_get_items('node', $entity, 'field_dc_creator');
+//	exit(print_r($entity_creator));
+    if (!empty($entity_creator)) {
+      $document->addField('sort_field_dc_creator', $entity_creator[0]['value']);
+    }
+	$entity_tapas_author=user_load($entity->uid);
+    $tapas_author_first = $entity_tapas_author->field_user_first_name['und'][0]['value'];
+    $tapas_author_last = $entity_tapas_author->field_user_last_name['und'][0]['value'];
+    $tapas_author = $tapas_author_last.", ".$tapas_author_first;
+//	exit(print_r($entity_tapas_author));
+    if (!empty($tapas_author)) {
+      $document->addField('sort_name_lf_formatted', $tapas_author);
+    }
+
+  }
+  $entity_title = field_get_items('node', $entity, 'field_title');
+  $entity_body = field_get_items('node', $entity, 'field_body');
+    if (!empty($entity_title['und'][0]['value'])) {
+  $document->content .= $entity_title['und'][0]['value'];
+	}
+	if (!empty($entity_body['und'][0]['value'])) {
+  $document->content .= $entity_body['und'][0]['value'];
+	}
+}
+
+function tapas_solr_apachesolr_query_alter($query) {
+//print_r($query);
+
+//$query->removeParam('mm');
+$query->replaceParam('mm', '100%');
+$query->replaceParam('q.op', 'AND');
+//if i need the array...(Not Indexable)
+//$params['fl']['sm_vid_Author_Last_Name'] = 'sm_vid_Author_Last_Name';
+$params['fl']['ts_field_title'] = 'ts_field_title';
+$params['fl']['ts_body'] = 'ts_body';
+$params['fl']['dm_field_dc_date'] = 'dm_field_dc_date';
+$params['fl']['dm_field_dc_coverage_temporal'] = 'dm_field_dc_coverage_temporal';
+$params['fl']['dm_field_dc_coverage_temporal_end'] = 'dm_field_dc_coverage_temporal_end';
+
+
+  $params['qf']['ts_field_title'] = 'ts_field_title^20.0';
+  $params['qf']['ts_body'] = 'ts_body^20.0';
+  $params['qf']['ts_field_dc_title'] = 'ts_field_dc_title^20.0';
+  $params['qf']['ts_field_dc_source_full_text'] = 'ts_field_dc_source_full_text^20.0';
+  $params['qf']['ts_field_dc_description'] = 'ts_field_dc_description^20.0';
+  $params['qf']['ts_field_dc_alternative'] = 'ts_field_dc_alternative^20.0';
+  $params['qf']['ts_field_dc_contributor'] = 'ts_field_dc_contributor^20.0';
+  $params['qf']['ts_field_dc_creator'] = 'ts_field_dc_creator^20.0';
+  
+  //Dates
+  $params['qf']['ts_field_dc_date_display'] = 'ts_field_dc_date_display^20.0';
+  $params['qf']['ts_field_dc_coverage_temporal_displ'] = 'ts_field_dc_coverage_temporal_displ^20.0';
+
+  //Author
+  $params['qf']['tos_name_formatted'] = 'tos_name_formatted^20.0';
+  //Projects Vocab
+  $params['qf']['tm_vid_275_names'] = 'tm_vid_275_names^20.0';
+  //Collections Vocab
+  $params['qf']['tm_vid_5_names'] = 'tm_vid_5_names^20.0';
+  //Institutions Vocab
+  $params['qf']['tm_vid_319_names'] = 'tm_vid_319_names^20.0';
+  //Language
+  $params['qf']['tm_vid_539_names'] = 'tm_vid_539_names^20.0';
+  //LOC Classification
+  $params['qf']['tm_vid_538_names'] = 'tm_vid_538_names^20.0';
+  //DDC Subject
+  $params['qf']['tm_vid_537_names'] = 'tm_vid_537_names^20.0';
+  //Getty AAT Genre
+  $params['qf']['tm_vid_536_names'] = 'tm_vid_536_names^20.0';
+  //DC Coverage Spatial
+  $params['qf']['tm_vid_266_names'] = 'tm_vid_266_names^20.0';
+  //DC Author First Name
+//  $params['qf']['tm_vid_237_names'] = 'tm_vid_237_names^20.0';
+  //DC Author Last Name
+//  $params['qf']['tm_vid_236_names'] = 'tm_vid_236_names^20.0';
+  //DC Author Corporate
+//  $params['qf']['tm_vid_242_names'] = 'tm_vid_242_names^20.0';
+  //DC Source (Taxonomy)
+  $params['qf']['tm_vid_233_names'] = 'tm_vid_233_names^20.0';
+  //User Subject Tags
+  $params['qf']['tm_vid_232_names'] = 'tm_vid_232_names^20.0';
+  //All Subject Tags
+//  $params['qf']['ts_field_subjects'] = 'ts_field_subjects^20.0';
+$params['hl'] = 'true';
+
+$params['hl.fl'] = array( 'ts_field_title', 'ts_body', 'ts_field_dc_title', 'ts_field_dc_source_full_text', 'ts_field_dc_description', 'ts_field_dc_alternative','ts_field_dc_contributor', 'tos_name_formatted', 'tm_vid_275_names', 'tm_vid_5_names', 'tm_vid_319_names', 'tm_vid_539_names', 'tm_vid_538_names', 'tm_vid_537_names', 'tm_vid_536_names', 'tm_vid_266_names', 'tm_vid_233_names', 'tm_vid_232_names', 'ts_field_dc_date_display', 'ts_field_dc_creator', 'ts_field_dc_coverage_temporal_displ');
+
+  $query->addParams($params);
+}
+

@@ -1,0 +1,37 @@
+<?php
+
+/**
+ * Implement hook_menu_alter().
+ */
+function vocabularyaccess_menu_alter(&$items) {
+  $items['taxonomy/%taxonomy_vocabulary']['access callback'] = 'vocabularyaccess_access_check';
+  $items['taxonomy/%taxonomy_vocabulary']['access arguments'] = array(1);
+}
+
+/**
+ * Access callback for vocabulary pages.
+ */
+function vocabularyaccess_access_check($vocabulary) {
+  return user_access('view all vocabulary pages')
+    || user_access('view vocabulary page for ' . $vocabulary->machine_name);
+}
+
+/**
+ * Implement hook_permission().
+ */
+function vocabularyaccess_permission() {
+  $perms = array(
+    'view all vocabulary pages' => array(
+      'title' => t('View all vocabulary pages'),
+      'description' => t('This allows the user to view all vocabulary pages located at taxonomy/* paths.')
+    ),
+  );
+
+  foreach (taxonomy_get_vocabularies() as $vocab) {
+    $perms['view vocabulary page for ' . $vocab->machine_name] = array(
+      'title' => t('View the vocabulary page for @name', array('@name' => $vocab->name)),
+      'description' => t('This permission allows someone to view the <a href="@url">vocabulary page</a>.', array('@url' => url('taxonomy/' . $vocab->vid))),
+    );
+  }
+  return $perms;
+}

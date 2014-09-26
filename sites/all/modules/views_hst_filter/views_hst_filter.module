@@ -1,0 +1,65 @@
+<?php
+/**
+ * Implementation of hook_views_api().
+ */
+function views_hst_filter_views_api() {
+  return array(
+    'api' => 3,
+  );
+}
+
+/**
+ * Implement hook_form_alter for the exposed form.
+ *  */
+function views_hst_filter_form_views_exposed_form_alter(&$form, &$form_state) {
+  $keys = array_keys($form['#info']);
+  $own_form = FALSE;
+  foreach ($keys as $key) {
+    if (FALSE !== strpos($key, 'filter-terms')) {
+      $own_form = TRUE;
+      break;
+    }
+  }
+
+  if (!$own_form) {
+    return;
+  }
+
+  // In order for Ajax to work, we need the form build info. Here we check if 
+  // #ajax has been added to any form elements, and if so, pass this info as
+  // settings via Javascript, which get attached to the submitted form on Ajax
+  // form submissions.
+  // http://drupal.org/node/1183418
+  $attached = array(
+    'type' => 'setting',
+    'data' => array(
+      'exposed_form_info' => array(
+        'form_id' => $form['#form_id'],
+        'form_build_id' => $form['#build_id'],
+      ),
+    ),
+  );
+  if (isset($form['#token'])) {
+    $attached['data']['exposed_form_info']['form_token'] = $form['#token'];
+  }
+  $form['#attached']['js'][] = $attached;
+  
+  $form['#attached']['js'][] = array(
+    'type' => 'inline',
+    'weight' => 100,
+    'data' => '(function ($) {
+        Drupal.behaviors.views_hst_filter = {
+          attach: function(context, settings) {
+            for (ajax_object in Drupal.ajax) {
+              if (Drupal.ajax[ajax_object].options) {
+                jQuery.extend(Drupal.ajax[ajax_object].options.data, Drupal.settings.exposed_form_info);
+              }
+            }
+          }
+        };
+      })(jQuery);',
+  );
+  
+  // Attaching own css for ajax-progress
+  $form['#attached']['css'] = array(drupal_get_path('module', 'views_hst_filter') . '/views_hst_filter.css');
+}

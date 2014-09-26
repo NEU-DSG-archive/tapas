@@ -1,0 +1,15 @@
+name = Views Field Filter
+description = Allow users to filter which field will display.
+package = Views
+core = 7.x
+
+dependencies[] = views
+
+files[] = views_fieldfilter.module
+files[] = handlers/views_fieldfilter_handler_filter_fields.inc
+; Information added by drupal.org packaging script on 2011-11-14
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "views_fieldfilter"
+datestamp = "1321232027"
+

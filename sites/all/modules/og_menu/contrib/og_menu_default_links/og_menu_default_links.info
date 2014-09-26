@@ -1,0 +1,14 @@
+name = OG Menu Default Links
+description = "Allows creation of default links when adding new groups (menus)"
+files[] = og_menu_default_links.module
+dependencies[] = og_menu
+configure = admin/config/group/og_menu/default-links
+package = "Organic groups"
+core = 7.x
+
+; Information added by drupal.org packaging script on 2013-07-31
+version = "7.x-3.0-rc2"
+core = "7.x"
+project = "og_menu"
+datestamp = "1375312868"
+

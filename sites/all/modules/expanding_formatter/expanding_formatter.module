@@ -1,0 +1,227 @@
+<?php
+
+/**
+ * @file
+ * Provides a formatter that allows text fields to expand the rest of the trimmed or summary with a customizable "expand" link.
+ */
+ 
+/**
+* Implements hook_field_formatter_info().
+*/
+function expanding_formatter_field_formatter_info() {
+ return array(
+   'expanding_formatter_text_trimmed' => array(
+     'label' => t('Trimmed (expandable)'),
+     'field types' => array('text', 'text_long', 'text_with_summary'),
+     'settings' => array(
+       'effect' => 'slide',
+       'trigger_label' => t('expand'),
+       'trigger_css' => '',
+       'trim_length' => 200,
+       'trim_ellipsis' => TRUE,
+     ),
+   ),
+   'expanding_formatter_text_summary_or_trimmed' => array(
+     'label' => t('Summary or trimmed (expandable)'),
+     'field types' => array('text_with_summary'),
+     'settings' => array(
+       'effect' => 'slide',
+       'trigger_label' => t('expand'),
+       'trigger_css' => '',
+       'trim_length' => 200,
+       'trim_ellipsis' => TRUE,
+     ),
+   ),
+ );
+}
+
+
+/**
+ * Implements hook_field_formatter_info().
+ * Position the read more formatters to appear after the related text formatters.
+ */
+function expanding_formatter_field_formatter_info_alter(&$info) {
+  // Save the original data.
+  $trimmed = $info['expanding_formatter_text_trimmed'];
+  unset($info['expanding_formatter_text_trimmed']);
+  $summary = $info['expanding_formatter_text_summary_or_trimmed'];
+  unset($info['expanding_formatter_text_summary_or_trimmed']);
+  // Find the text formmatters.
+  $formatters = array();
+  foreach ($info as $name => $data) {
+    $formatters[$name] = $data;
+    switch ($name) {
+      case 'text_trimmed':
+        $formatters['expanding_formatter_text_trimmed'] = $trimmed;
+        break;
+      case 'text_summary_or_trimmed':
+        $formatters['expanding_formatter_text_summary_or_trimmed'] = $summary;
+        break;
+    }
+  }
+  // Failsafe, add them to the end of the list if the text formatters were not found.
+  if (!isset($info['expanding_formatter_text_trimmed'])) {
+    $formatters['expanding_formatter_text_trimmed'] = $trimmed;
+  }
+  if (!isset($info['expanding_formatter_text_summary_or_trimmed'])) {
+    $formatters['expanding_formatter_text_summary_or_trimmed'] = $summary;
+  }
+  $info = $formatters;
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+ function expanding_formatter_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+   $display = $instance['display'][$view_mode];
+   $settings = $display['settings'];
+   $element = array();
+   if (strpos($display['type'], '_trimmed') !== FALSE) {
+     $element['effect'] = array(
+       '#title' => t('Effect'),
+       '#type' => 'select',
+       '#default_value' => $settings['effect'],
+       '#options' => array(
+         'fade' => t('Fade'),
+         'slide' => t('Slide'),
+       ),
+       '#required' => TRUE,
+     );
+     $element['trigger_label'] = array(
+       '#title' => t('Trigger label'),
+       '#type' => 'textfield',
+       '#size' => 10,
+       '#default_value' => $settings['trigger_label'],
+       '#required' => TRUE,
+     );
+     $element['trigger_css'] = array(
+       '#title' => t('Trigger CSS'),
+       '#description' => t('Provide additional CSS classes separated by spaces.'),
+       '#type' => 'textfield',
+       '#size' => 30,
+       '#default_value' => $settings['trigger_css'],
+     );
+     $element['trim_length'] = array(
+       '#title' => t('Trim length'),
+       '#type' => 'textfield',
+       '#size' => 10,
+       '#default_value' => $settings['trim_length'],
+       '#element_validate' => array('element_validate_integer_positive'),
+       '#required' => TRUE,
+     );
+     $element['trim_ellipsis'] = array(
+       '#title' => t('Used ellipsis on trimmed content'),
+       '#type' => 'checkbox',
+       '#default_value' => $settings['trim_ellipsis'],
+     );
+   }
+   return $element;
+ }
+
+ /**
+  * Implements hook_field_formatter_settings_summary().
+  */
+ function expanding_formatter_field_formatter_settings_summary($field, $instance, $view_mode) {
+   $display = $instance['display'][$view_mode];
+   $settings = $display['settings'];
+   $summary = array();
+   switch ($settings['effect']) {
+     case 'fade': $effect = t('Fade'); break;
+     case 'slide': $effect = t('Slide'); break;
+   }
+   if (strpos($display['type'], '_trimmed') !== FALSE) {
+     if (isset($effect)) {
+       $summary[] = t('Effect') . ': ' . $effect;
+     }
+     $summary[] = t('Trigger label') . ': ' . $settings['trigger_label'];
+     if (!empty($settings['trigger_css'])) {
+       $summary[] = t('Trigger css') . ': ' . $settings['trigger_css'];
+     }
+     $summary[] = t('Trim length') . ': ' . $settings['trim_length'] . ($settings['trim_ellipsis'] ? ' (with ellipsis)' : '');
+   }
+   return implode('<br />', $summary);
+ }
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function expanding_formatter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $summary = '';
+  switch ($display['type']) {
+    case 'expanding_formatter_text_trimmed':
+      foreach ($items as $delta => $item) {
+        $original = _text_sanitize($instance, $langcode, $item, 'value');
+        if ($display['type'] == 'expanding_formatter_text_trimmed') {
+          $summary = text_summary($original, $instance['settings']['text_processing'] ? $item['format'] : NULL, $display['settings']['trim_length']);
+        }
+        $more = str_replace($summary, '', $original);
+        // Render expandable content
+        if (!empty($more)) {
+          if ($display['settings']['trim_ellipsis']) {
+            $summary .= '<span class="trim-ellipsis">... </span>';
+          }
+          $classes = '';
+          if (!empty($display['settings']['trigger_css'])) {
+            $classes = ' ' . $display['settings']['trigger_css'];
+          }
+          $summary .= '<a class="trigger' . $classes . '" href="javascript:void(0)">' . $display['settings']['trigger_label'] . '</a>';
+          $summary .= '<div class="content">' . $more . '</div>';
+          $element[$delta] = array(
+            '#prefix' => '<div class="expanding-formatter ' . $display['settings']['effect'] . '">',
+            '#suffix' => '</div>',
+            '#markup' => $summary,
+            '#attached' => array(
+              'css' => array(drupal_get_path('module', 'expanding_formatter') . '/expanding_formatter.css'),
+              'js' => array(drupal_get_path('module', 'expanding_formatter') . '/expanding_formatter.js'),
+            ),
+          );
+        }
+        // Content is short enough, render entire original output.
+        else {
+          $element[$delta] = array('#markup' => $original);
+        }
+      }
+      break;
+
+    case 'expanding_formatter_text_summary_or_trimmed':
+      foreach ($items as $delta => $item) {
+        $original = _text_sanitize($instance, $langcode, $item, 'value');
+        if (!empty($item['summary'])) {
+          $summary = _text_sanitize($instance, $langcode, $item, 'summary');
+        }
+        else {
+          $summary = text_summary($original, $instance['settings']['text_processing'] ? $item['format'] : NULL, $display['settings']['trim_length']);
+        }
+        $more = str_replace(strip_tags($summary), '', $original);
+        // Render expandable content
+        if (!empty($more)) {
+          if ($display['settings']['trim_ellipsis']) {
+            $summary .= '<span class="trim-ellipsis">... </span>';
+          }
+          $classes = '';
+          if (!empty($display['settings']['trigger_css'])) {
+            $classes = ' ' . $display['settings']['trigger_css'];
+          }
+          $summary .= '<a class="trigger' . $classes . '" href="javascript:void(0)">' . $display['settings']['trigger_label'] . '</a>';
+          $summary .= '<div class="content">' . $more . '</div>';
+          $element[$delta] = array(
+            '#prefix' => '<div class="expanding-formatter ' . $display['settings']['effect'] . '">',
+            '#suffix' => '</div>',
+            '#markup' => $summary,
+            '#attached' => array(
+              'css' => array(drupal_get_path('module', 'expanding_formatter') . '/expanding_formatter.css'),
+              'js' => array(drupal_get_path('module', 'expanding_formatter') . '/expanding_formatter.js'),
+            ),
+          );
+        }
+        // Content is short enough, render entire original output.
+        else {
+          $element[$delta] = array('#markup' => $original);
+        }
+      }
+      break;
+  }
+  return $element;
+}

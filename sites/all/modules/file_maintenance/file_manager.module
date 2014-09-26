@@ -1,0 +1,199 @@
+<?php
+
+
+define('FILE_MANAGER_THUMB_WIDTH', 32);
+define('FILE_MANAGER_THUMB_HEIGHT', 32);
+
+/**
+ * Implements hook_help().
+ */
+function file_manager_help($path, $arg) {
+  $output = '';
+  switch ($path) {
+    case 'admin/help#file_manager':
+      $output .= t('<p>File manager allows to manage the files in the database table <em>file_managed</em>'
+        . ' and the files directory in the file system. Both will be compared and conflicts will be shown.</p>');
+      $output .= ''
+        . t('<p>See also: !link</p>',
+          array(
+            '!link' => l(t('File system'), 'admin/config/media/file-system', array('attributes' => array('title' => t('File system')))))
+          );
+      break;
+/*
+    case 'admin/content/file-manager':
+      $output .= '<p>'.t('').'</p>'
+        . t('See also: !link',
+          array('!link' => l(t('File manager settings'), 'admin/config/system/file-manager', array('attributes' => array('title' => t('File system'))))));
+      break;
+ */
+    case 'admin/config/system/file-manager':
+      $output .= '' . t('<p>Settings for the !file_manager.</p>',
+        array(
+          '!file_manager' => l(t('File manager'), 'admin/content/file-manager', array('attributes' => array('title' => t('File manager')))),
+        )
+      );
+      break;
+  }
+
+  return $output;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function file_manager_permission() {
+  return array(
+    'use file manager' => array(
+      'title' => t('Use File manager'),
+      'description' => t('Use File manager to browse and maintain managed and unmanaged files.'),
+    ),
+    'administer file manager' => array(
+      'title' => t('Administer File manager'),
+      'description' => t('Change configuration settings of File manager.'),
+    ),
+    'extend filesystem access' => array(
+      'title' => t('Extend filesystem access'),
+      'description' => t('(Not yet implemented.) Access the filesystem outside of the standard drupal files directories (public/private).'),
+      'restrict access' => TRUE,
+    )
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function file_manager_menu() {
+  $items = array();
+  $items['admin/content/file-manager'] = array(
+    'title' => 'File manager',
+    'description' => 'Browse and perform maintenance on managed and unmanaged files.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('file_manager_browser_form'),
+    'access callback' => 'user_access',
+    'access arguments' => array('use file manager'),
+    //'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/file_manager.browser.inc',
+    'weight' => 100,
+  );
+
+  $items['admin/content/file-manager/browse'] = array(
+    'title' => 'Browse',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 0,
+  );
+
+  $items['admin/content/file-manager/analyze'] = array(
+    'title' => 'Analyze',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('use file manager'),
+    'weight' => 5,
+  );
+
+  $items['admin/file-manager/file-list'] = array(
+    'page callback' => 'file_manager_update_file_list',
+//    'access callback' => 'user_access',
+    'access arguments' => array('use file manager'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/file_manager.browser.inc',
+  );
+/*
+  $items['admin/file-manager/directory-tree/%'] = array(
+    'page callback' => 'file_manager_update_directory_tree',
+    'page arguments' => array(3),
+    'access callback' => 'user_access',
+    'access arguments' => array('use file manager'),
+    'type' => MENU_CALLBACK,
+    'file' => 'includes/file_manager.browser.inc',
+  );
+ */
+  $items['admin/config/system/file-manager'] = array(
+    'title' => 'File manager',
+    'description' => 'Setup the File manager module.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('file_manager_settings_form'),
+    'access callback' => 'user_access',
+    'access arguments' => array('administer file manager'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'includes/file_manager.browser.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function file_manager_theme(&$existing, $type, $theme, $path) {
+  return array(
+    'directory_tree_wrapper' => array(
+      'template' => 'templates/file-manager-directory-tree-wrapper',
+      'render element' => 'tree',
+    ),
+    'file_list_wrapper' => array(
+      'template' => 'templates/file-manager-file-list-wrapper',
+      'render element' => 'list',
+    ),
+    'list_file' => array(
+      'template' => 'templates/file-manager-list-file',
+      'variables' => array(
+        'filename' => array(),
+        'level' => 0,
+      )
+    ),
+    'tree_file' => array(
+      'template' => 'templates/file-manager-tree-file',
+      'variables' => array(
+        'filename' => array(),
+        'level' => 0,
+        'is_temporary' => FALSE,
+      ),
+    ),
+    'file_manager_tree_directory' => array(
+      'template' => 'templates/file-manager-tree-directory',
+      'file' => 'includes/file_manager.browser.inc',
+      'variables' => array(
+        // TODO clean up
+        'subdirs' => array(),
+        'file_count' => 0,
+        'files' => array(),
+        'files_size' => 0,
+        'files_size_deep' => 0,
+        'file_count_deep' => 0,
+        'dirname' => '',
+        'uri' => '',
+        'level' => 0,
+        'subdirs' => array(),
+        'child_count' => 0,
+        'in_database' => FALSE,
+        'in_filesystem' => FALSE,
+        'is_temporary' => FALSE,
+        'dir_id' => '',
+        'icon' => '',
+        'error' => array(),
+        'icon_element' => '',
+        'toggle_element' => '',
+        'expanded' => '',
+        'filename_classes' => ''
+      ),
+      //'pattern' => 'tree_directory__',
+    ),
+  );
+}
+
+/*
+ * Implements hook_image_default_styles().
+ */
+function file_manager_image_default_styles() {
+  $styles = array();
+
+  $styles['file_manager_thumbnail'] = array(
+    'effects' => array(
+      array(
+        'name' => 'image_scale',
+        'data' => array('width' => FILE_MANAGER_THUMB_WIDTH, 'height' => FILE_MANAGER_THUMB_HEIGHT, 'upscale' => FALSE),
+        'weight' => 0,
+      ),
+    )
+  );
+  return $styles;
+}
+

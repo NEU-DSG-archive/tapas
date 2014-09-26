@@ -1,0 +1,15 @@
+; $Id: regcode_dynamic.info,v 1.1.2.1 2010/03/07 14:56:04 aidan Exp $
+name = Dynamic code support
+description = Allows checksum based registration codes to used. 
+core = 7.x
+package = Registration
+dependencies[] = regcode
+files[] = regcode_dynamic.install
+files[] = regcode_dynamic.module
+
+; Information added by drupal.org packaging script on 2011-10-15
+version = "7.x-1.0"
+core = "7.x"
+project = "regcode"
+datestamp = "1318678302"
+

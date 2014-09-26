@@ -1,0 +1,86 @@
+<?php
+
+/**
+ * @file
+ * A Facet API widget that displays a slider to control ranges.
+ */
+function facetapi_slider_menu() {
+  $items['facetapi/widget/submit/%/%facetapi_adapter'] = array(
+    'access callback' => TRUE,
+    'page callback' => 'facetapi_slider_submit_page',
+    'page arguments' => array(3, 4),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function facetapi_slider_submit_page($form_id, $adapter) {
+  foreach (module_invoke_all('facetapi_widgets') as $id => $info) {
+    if (strpos($form_id, $id . '_widget_form_') === 0) {
+      // Normally this redirects.
+      if ($form = drupal_get_form($form_id, $adapter, array())) {
+        return $form;
+      }
+    }
+  }
+  return MENU_NOT_FOUND;
+}
+
+/**
+ * Implements hook_facetapi_widgets().
+ */
+function facetapi_slider_facetapi_widgets() {
+  return array(
+    'facetapi_slider' => array(
+      'handler' => array(
+        'label' => t('Slider'),
+        'class' => 'FacetapiWidgetSlider',
+        'query types' => array('numeric_range'),
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_forms().
+ */
+function facetapi_slider_forms($form_id, $args) {
+  $widgets = &drupal_static(__FUNCTION__);
+  $forms = array();
+  // Model code for facetapi itself
+  if (!isset($widgets)) {
+    $widgets = module_invoke_all('facetapi_widgets');
+  }
+  foreach ($widgets as $id => $info) {
+    if (strpos($form_id, $id . '_widget_form_') === 0) {
+      $class = $info['handler']['class'];
+      if (class_exists($class)) {
+        array_unshift($args, $form_id);
+        $args[] = $class;
+        $forms[$form_id] = array(
+          'callback' => 'facetapi_widget_form_wrapper',
+          'callback arguments' => $args,
+        );
+      }
+    }
+  }
+  return $forms;
+}
+
+function facetapi_widget_form_wrapper($form, &$form_state, $form_id, $adapter, $build, $class) {
+  $params = func_get_args();
+  $form = call_user_func_array(array($class, 'widgetForm'), $params);
+  $form['#widget_class'] = $class;
+  $form['#facetapi_adapter'] = $adapter;
+  $form['#validate'][] = 'facetapi_widget_form_wrapper_validate';
+  $form['#submit'][] = 'facetapi_widget_form_wrapper_submit';
+  return $form;
+}
+
+function facetapi_widget_form_wrapper_validate($form, &$form_state) {
+  call_user_func_array(array($form['#widget_class'], 'widgetFormValidate'), array($form, &$form_state));
+}
+
+function facetapi_widget_form_wrapper_submit($form, &$form_state) {
+  call_user_func_array(array($form['#widget_class'], 'widgetFormSubmit'), array($form, &$form_state));
+}

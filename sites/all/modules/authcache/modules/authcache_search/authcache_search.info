@@ -1,0 +1,13 @@
+name = Authcache Search
+description = Authcache support for the search module
+package = Performance and scalability
+core = 7.x
+dependencies[] = authcache
+dependencies[] = search
+
+; Information added by drupal.org packaging script on 2013-10-16
+version = "7.x-2.0-alpha4+23-dev"
+core = "7.x"
+project = "authcache"
+datestamp = "1381882731"
+

@@ -1,0 +1,20 @@
+<?php
+/**
+ * @file
+ * Module file for z_apachesolr_realtime_reports
+ */
+
+ /**
+ * Implements hook_menu().
+ */
+function z_apachesolr_realtime_reports_menu() {
+  $items = array();
+  $items['admin/reports/z_apachesolr_realtime_reports'] = array(
+    'title' => 'Apache Solr Real-Time Reports',
+    'description' => 'View and filter list of Solr commits',
+    'page callback' => 'z_apachesolr_realtime_reports',
+    'access arguments' => array('administer search'),
+    'file' => 'z_apachesolr_realtime_reports.admin.inc',
+  );
+  return $items;
+}

@@ -1,0 +1,135 @@
+/**
+ * Pixture Reloaded Colors
+ */
+/* Main Wrappers */
+html {
+  color: #404040;
+  background: #fafbfd;
+}
+
+#page {
+  background: #fafbfd;
+}
+
+
+/* HTML elements */
+
+fieldset legend,
+.form-item label {
+  color: #999;
+}
+
+blockquote {
+  background: #fafbfd;
+}
+
+/* Lists */
+
+.item-list ul li {
+  list-style-image: url("../images/bullet-round.png");
+}
+
+.links {
+  color: #39f;
+}
+
+
+/* Menus */
+
+li.leaf {
+  list-style-image: url("../images/bullet-round.png");
+}
+
+li.collapsed {
+  list-style-image: url("../images/bullet-sm-arrow-right.png");
+}
+
+li.expanded {
+  list-style-image: url("../images/bullet-sm-arrow-down.png");
+}
+
+
+/* Links 
+*/
+  a:link {
+    color: #3399ff;
+  }
+  a:visited {
+    color: #3388cc;
+  }
+  a:hover {
+    color: #3366ff;
+  }
+  a:focus {
+    color: #3366ff;
+  }
+  a:active, .active, li a.active {
+    color: #555555 !important;
+  }
+
+
+/* Tables */
+
+tr.odd {
+  background: #fafbfd;
+}
+
+tr.even {
+  background: #fff;
+}
+
+
+/* Header */
+
+#header  {
+  background: #edf3fa repeat-x left top;
+}
+
+#header .header-inner {
+ /*background: transparent url("../images/header.png") no-repeat top left;*/
+}
+
+@media only screen and (max-width:320px) {
+  #header,#header .header-inner {background: #edf3fa;}
+}
+
+@media only screen and (min-width:321px) and (max-width:480px) {
+  #header,#header .header-inner  {background: #edf3fa;}
+}
+
+@media only screen and (min-width:481px) and (max-width:768px) {
+  #header,#header .header-inner  {background: #edf3fa;}
+}
+
+#site-slogan {
+  color: #999;
+}
+
+#menu-bar,
+#primary-menu-bar {
+  background-color: #d3e3f4;
+}
+
+.region-header .form-text,
+.region-header .form-submit {
+  border-color: #ccc;
+}
+
+
+/* Blocks */
+
+.block-inner {
+}
+.block-title {
+  color: #404040;
+}
+
+
+/* Strip backgrounds */
+
+#header-region .block-inner,
+#block-system-main .block-inner,
+#footer .block-inner,
+#footer .block .block-title {
+  background: none;
+}

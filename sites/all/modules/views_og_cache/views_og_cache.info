@@ -1,0 +1,14 @@
+name = Views cache per OG group
+core = 7.x
+dependencies[] = views
+dependencies[] = og_context
+package = Views
+files[] = views/views_og_cache_plugin_cache_time.inc
+
+
+; Information added by drupal.org packaging script on 2013-10-19
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "views_og_cache"
+datestamp = "1382164986"
+

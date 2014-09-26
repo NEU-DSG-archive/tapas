@@ -1,0 +1,16 @@
+
+name = MongoDB Field Storage
+description = Store Field content on MongoDB.
+package = MongoDB
+version = VERSION
+core = 7.x
+dependencies[] = mongodb
+files[] = mongodb_field_storage.module
+files[] = mongodb_field_storage.test
+
+; Information added by drupal.org packaging script on 2013-10-26
+version = "7.x-1.0-rc2+18-dev"
+core = "7.x"
+project = "mongodb"
+datestamp = "1382751121"
+
