@@ -1,0 +1,23 @@
+.node-title{
+display:none;
+}
+.code-mirror-iframe{
+height:1000px;
+background-color:pink;
+}
+#edit-actions, #edit-field-code-mirror-0-actions{
+/*display:none;*/
+}
+.form-item-field-formatter-field-und-0-settings-xsl-params{
+display:none;
+}
+.CodeMirror-hscrollbar{
+display:block !important;
+}
+.CodeMirror-vscrollbar{
+display:block !important;
+height:auto !important;
+}
+.CodeMirror-scrollbar-filler{
+display:block !important;
+}

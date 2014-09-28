@@ -1,0 +1,35 @@
+#edit-add-roles option[value="1157"], #edit-remove-roles option[value="1157"]
+{
+visibility:hidden;
+display:none;
+}
+
+#edit-basic{
+display:none;
+}
+#edit-field-collection-term{
+display:none;
+}
+
+#edit-previous{
+display:none;
+}
+
+#edit-relations{
+display:none;
+}
+#edit-delete{
+display:none;
+}
+.vertical-tabs{
+display:none !important;
+}
+.content-type-Collection{
+display:none;
+}
+#edit-field-project-logo{
+display:none !important;
+}
+#multistep-tei_content-group_finalize_tei{
+
+}

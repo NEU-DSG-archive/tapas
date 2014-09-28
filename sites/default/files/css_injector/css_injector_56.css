@@ -1,0 +1,84 @@
+#block-menu-menu-home-about-help li:after {
+    content: "|"
+;
+}
+#block-menu-menu-home-about-help li + li:before,
+#block-menu-menu-home-about-help li:before {
+    content: ""
+;
+}
+
+#block-menu-menu-home-about-help li:last-child:after {
+    content: ""
+;
+}
+
+#block-menu-menu-home-about-help li:last-child a {
+    padding-right: 0;
+}
+
+#block-menu-menu-home-about-help li, #block-menu-menu-advanced-search li {
+    margin: 0;
+    padding: 0;
+    font-size: 90% ;
+}
+
+#block-menu-menu-home-about-help li a {
+    padding: 0 0.5em;
+}
+
+div.region.region-secondary-content {
+    border-left: 0;
+    border-right: 0;
+    padding: 0 30px;
+}
+
+#columns {
+    border-left: 0px;
+    border-right: 0px;
+    padding: 0px 30px;
+}
+
+#branding {
+    max-height: 105px;
+}
+
+#logo {
+    margin: 0 0 20px 0;
+    padding: 0 30px;
+}
+
+#block-system-user-menu .block-inner {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.unit .inside {
+    margin: 0;
+}
+
+#main-content {
+    margin-left: 30px;
+    margin-right: 30px;
+}
+
+.block-inner {
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.panel-pane .block-inner {
+    margin-left: 0;
+    margin-right: 0;
+}
+.panel-pane .block-inner {
+    margin-left: 0;
+    margin-right: 0;
+}
+#block-views-not-yet-og2-block-1 {
+/*DO NOT TURN THIS OFF!!!! PEOPLE COMPLAIN WHEN THEY DONT FINISH THEIR PROJECT!!!!*/
+	/*display: none;*/
+}
+.block h1:first-child {
+    margin-top: 0;
+}

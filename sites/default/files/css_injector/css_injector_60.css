@@ -1,0 +1,26 @@
+.region-sidebar-second {
+    margin-left: -25%;
+    width: 25%;
+}
+.content-inner {
+    margin-right: 25% !important;
+}
+.region-sidebar-second .block-inner {
+    background: none repeat scroll 0 0 #EDF3FA;
+}
+.region-sidebar-second .block-title {
+    background: none repeat scroll 0 0 #BFD8F1;
+    color: #FFFFFF;
+}
+.region-sidebar-second .item-list ul li {
+    list-style: none;
+}
+.region-sidebar-second .views-summary {
+    padding: 10px 0 0 10px;
+}
+.region-sidebar-second .tag-cloud {
+    padding: 10px;
+}
+.region-sidebar-second .block-content {
+    padding: 0 10px 10px;
+}

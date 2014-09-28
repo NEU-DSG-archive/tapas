@@ -1,0 +1,32 @@
+#edit-next{
+background-image: url('/sites/default/files/pictures/node-group-project-creation.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+display:inline-block !important;
+}
+.form-item-field-institution-und .project-blurb{
+width:100%;
+}
+#edit-field-institution-und{
+float:left;
+clear:both;
+}
+#field-external-links-values{
+width:auto !important;
+min-width:300px;
+max-width:1500px;
+}
+#field-external-links-values td{
+max-width: 1470px;
+    min-width: 270px;
+    width: 100%;
+}
+.field-multiple-drag{
+max-width: 30px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+}

@@ -1,0 +1,27 @@
+#edit-next{
+background-image: url('/sites/default/files/pictures/tei-content-1.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+.image-widget-data {
+    width: 90%;
+}
+#edit-field-tei-xml, #edit-field-collection-term, #edit-field-extract-metadata, #edit-group-content-access, #edit-field-tei-images{
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -khtml-border-radius: 6px;
+    border-radius: 6px;
+    clear: both;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    position: relative;
+    width: 95%;
+background-color: rgba(0, 0, 0, 0.01);
+border: 1px dotted #CCCCCC;
+border-radius: 6px 6px 6px 6px;
+}

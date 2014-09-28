@@ -1,0 +1,10 @@
+body{
+min-width:1075px;
+}
+header, #menu-bar{
+min-width:1115px;
+}
+.view-header{
+}
+.view-content{
+}
