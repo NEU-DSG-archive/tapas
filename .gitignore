@@ -9,6 +9,7 @@ sites/*/files/cache/
 sites/*/files/style/
 sites/*/files/pictures/
 sites/*/files/tmp/
+sites/*/files/bulk-temp/
 sites/*/private/
 
 # Ignore files that have passwords in them
