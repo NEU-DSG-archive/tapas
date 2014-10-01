@@ -14,3 +14,7 @@ sites/*/private/
 
 # Ignore files that have passwords in them
 .htpasswd
+
+# Ignore .htaccess - we create this as a symlink to the appropriate .htaccess.env
+# on a per machine basis.
+.htaccess
