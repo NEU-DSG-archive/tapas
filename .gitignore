@@ -6,7 +6,11 @@ sites/*/settings*.php.*
 # Ignore paths that contain user-generated content.
 sites/*/files/projects/
 sites/*/files/cache/
-sites/*/files/style/
+
+# Ignore project style directories 
+sites/*/files/styles/*/public/projects 
+# Ignore user thumbnails 
+sites/*/files/thumbnail/public/pictures
 sites/*/files/pictures/
 sites/*/files/tmp/
 sites/*/files/bulk-temp/

@@ -141,3 +141,5 @@ DirectoryIndex index.php index.html index.htm
     </FilesMatch>
   </IfModule>
 </IfModule>
+
+php_flag apc.cache_by_default Off
