@@ -100,7 +100,7 @@
         <xsl:call-template name="dialog"/>
         <xsl:call-template name="wrapper"/>
         <xsl:call-template name="contextual"/>
-        <xsl:copy-of select="$htmlFooter"/>
+        <!-- commented out 2014-09-28 by Syd xsl:copy-of select="$htmlFooter"/ -->
       </body>
     </html>
   </xsl:template>
@@ -198,8 +198,6 @@
       &lt;title> elsewhere does not cause any problems, but we may
       need to extend this to other occurrences of &lt;title> outside
       the Header.</xd:p>
-      <xd:p>WARNING — for now we are putting the TEI namespace into
-        output, as we (TAPAS) are not using JQuery.</xd:p>
     </xd:desc>
   </xd:doc>
   <xsl:template match="tei:teiHeader//tei:title">
@@ -287,6 +285,47 @@
     </a>
   </xsl:template>
 
+  <xd:doc>
+    <xd:desc>Add an attribute explaining list layout to the CSS</xd:desc>
+  </xd:doc>
+  <xsl:template match="tei:list">
+    <xsl:element name="{local-name(.)}" namespace="http://www.w3.org/1999/xhtml">
+      <xsl:call-template name="addID"/>
+      <xsl:call-template name="addRend"/>
+      <xsl:apply-templates select="@*[not( starts-with(local-name(.),'rend') ) and not( local-name(.)='style' )]"/>
+      <xsl:apply-templates select="@*"/>
+      <xsl:attribute name="data-tapas-list-type">
+        <xsl:variable name="labels" select="count( tei:label )"/>
+        <xsl:variable name="items"  select="count( tei:item  )"/>
+        <!-- ItemS Con Label 1st child -->
+        <xsl:variable name="iscl1"  select="count( tei:item[
+          child::node()[ not(
+            self::comment()
+            or  self::processing-instruction()
+            or  self::text()[normalize-space(.)='']
+            ) ][1][ self::tei:label ] 
+          ] )"/>
+        <xsl:choose>
+          <xsl:when test="$labels = $items">
+            <xsl:text>LIP</xsl:text>
+          </xsl:when>
+          <xsl:when test="tei:label  and  tei:item">
+            <xsl:text>lip</xsl:text>
+          </xsl:when>
+          <xsl:when test="$items = $iscl1">
+            <xsl:text>LII</xsl:text>
+          </xsl:when>
+          <xsl:when test="$iscl1 > ( $items div 3 )">
+            <xsl:text>lii</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>idunno</xsl:text>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:attribute>
+    </xsl:element>
+  </xsl:template>
+  
   <xd:doc>
     <xd:desc>Insert an HTML note-anchor before each <tt>&lt;note></tt>, except those
     that already have something pointing at them</xd:desc>
@@ -723,21 +762,22 @@
   </xd:doc>
   <xsl:template match="tei:lg/tei:l[ not(@prev) and not(@part='M') and not(@part='F') ]">
     <xsl:variable name="cnt" select="count(
-      preceding::tei:l[
+      preceding::tei:l[ not(@prev) and not(@part='M') and not(@part='F') ][
         generate-id( ancestor::tei:lg[ not( ancestor::tei:lg ) ] )
         =
         generate-id( current()/ancestor::tei:lg[ not( ancestor::tei:lg ) ] )
         ]
       ) +1"/>
-    <xsl:if test="( $cnt mod 5 ) = 0">
-      <span class="poem-line-count">
-	<xsl:value-of select="$cnt"/>
-      </span>
-    </xsl:if>
     <xsl:element name="{local-name(.)}">
       <xsl:call-template name="addRend"/>
       <xsl:apply-templates select="@*[not( starts-with(local-name(.),'rend') ) and not( local-name(.)='style' )]"/>
       <xsl:apply-templates select="node()"/>
+      <xsl:if test="( $cnt mod 5 ) = 0">
+        <xsl:text>&#xA0;</xsl:text>
+        <span class="poem-line-count">
+          <xsl:value-of select="$cnt"/>
+        </span>
+      </xsl:if>
     </xsl:element>
   </xsl:template>
   
@@ -790,6 +830,12 @@
           </xsl:apply-templates>
         </xsl:if>
       </xsl:when>
+      <xsl:when test="starts-with( $scheme,'http')  and  contains($uri,'wikipedia.org/')">
+        <xsl:comment> debug 4: Wikipedia!</xsl:comment>
+        <div class="contextualItem-world-wide-web">
+          <a name="{$uri}" href="{$uri}">Wikipedia article</a>          
+        </div>
+      </xsl:when>
       <xsl:otherwise>
         <xsl:comment> debug 3: </xsl:comment>
         <xsl:comment> uri=<xsl:value-of select="$uri"/> </xsl:comment>
@@ -816,7 +862,10 @@
     <xsl:copy/>
   </xsl:template>
   <xsl:template match="@xml:id" mode="genCon"/>
-  <xsl:template match="comment()|processing-instruction()" mode="genCon"/>
+  <xsl:template match="html:script
+                      |script
+                      |processing-instruction()
+                      |comment()" mode="genCon"/>
   
   <!-- For the outer contextual element we want to -->
   <!-- generate output in a particular order. Note that we are ignoring -->
