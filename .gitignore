@@ -8,6 +8,7 @@ sites/*/settings*.php.*
 # data added to it/its subdirectories (icons, diagrams, etc.) seemed like the easiest 
 # thing to do.
 sites/*/files/
+sites/*/private/
 
 # Ignore files that have passwords in them
 .htpasswd
