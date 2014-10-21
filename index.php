@@ -1,9 +1,9 @@
 <?php
 //apc_clear_cache();
 //ADDED FOR ERROR REPORTING
-error_reporting(E_ALL);
-ini_set('display_errors', TRUE);
-ini_set('display_startup_errors', TRUE);
+//error_reporting(E_ALL);
+//ini_set('display_errors', TRUE);
+//ini_set('display_startup_errors', TRUE);
 //END
 /**
  * @file
@@ -24,6 +24,6 @@ define('DRUPAL_ROOT', getcwd());
 require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 //ADDED-USE THIS TO REALLY CLEAR CACHE (SHOULD BE COMMENTED OUT)
-registry_rebuild();
+//registry_rebuild();
 //END
 menu_execute_active_handler();
