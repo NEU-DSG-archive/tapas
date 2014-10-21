@@ -533,11 +533,11 @@ function make_transform($xsl,$xml,$extension=NULL){
   //get project directory name 
   $xmlpath = pathinfo($xml);
   $xslpath = pathinfo($xsl);
-  $newdirname = ltrim($xmlpath['dirname'],".");
+  $newdirname = end(explode("files", $xmlpath['dirname']));
   $xmlfilename=$xmlpath['basename'];
   $xslfilename=$xslpath['basename'];
   //create transform filename
-  $files = DRUPAL_ROOT;
+  $files = drupal_realpath("public://");
   $filename = $xmlfilename . "-" . $xslfilename;
   $dirtosave = $files . $newdirname."/";
   $finalfile = $dirtosave . $filename . ".".$extension;
@@ -547,7 +547,8 @@ function make_transform($xsl,$xml,$extension=NULL){
   $xslDoc->substituteEntities = TRUE;
   $xslDoc->load($xsl);
   $xmlDoc = new DOMDocument();
-  $xmlDoc->load($xml);
+  $xml_realpath = drupal_realpath("public://").end(explode("files", $xml));
+  $xmlDoc->load($xml_realpath);
   $proc = new XSLTProcessor();
   $proc->importStylesheet($xslDoc);
   $doc = new DOMDocument();

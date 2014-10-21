@@ -1,0 +1,201 @@
+/* BLOCK CURRENT SEARCH */
+#block-current-search-clone-of-standard {
+	/*border-top: 1px solid #ccc;*/
+}
+#block-current-search-clone-of-standard.block h3 {
+	padding: 0;
+	margin: 0;
+	font-size: 95%;
+}
+#block-current-search-standard {
+	border-bottom: 1px dashed #999;
+	border-top: 1px dashed #999;
+	padding: 5px 0;
+}
+#block-current-search-clone-of-standard .block-inner,
+#block-current-search-standard .block-inner {
+	margin-left: 30px;
+	margin-right: 30px;
+}
+.block-current-search {
+	border-right: 1px solid #ccc;
+	padding: 0;
+	/*background-color: #F8F8F8*/;
+	margin: 0 25px 0 0;
+}
+.block-current-search.last {
+	border-bottom: 1px solid #ccc;
+}
+/*.current-search-item-group,
+#search-query {
+	padding-left: 10px;
+}*/
+.current-search-item-group {
+	font-size: 85%;
+}
+.region-sidebar-first .block-content {
+	padding: 0 !important;
+}
+#cboxLoadedContent li {
+	display: inline-block !important;
+	padding: 10px !important;
+}
+#search-query {
+	padding-bottom: 5px;
+}
+.search-reset {
+    font-weight: normal;
+    font-size: 13px;
+    margin-top: 10px;
+}
+.current-search-group div.current-search-group-title {
+	margin: 0;
+	padding: 0;
+	font-weight: bold;
+	padding-top: 7px;
+	display: none !important;
+}
+.results-heading {
+	font-weight: bold;
+	font-size: 1.1em;
+	padding-top: 10px;
+}
+
+/* BLOCK 8 */
+#block-block-8 {
+	border-top: none /*1px solid #CCCCCC*/;
+}
+#block-block-8 .block-inner {
+	margin-left: 30px;
+	margin-right: 30px;
+}
+#block-block-8 .block-title {
+	padding: 10px 0 5px 0;
+}
+#block-views-exp-solr-facets-page-2 .block-title {
+	font-weight: bold;
+	font-size: 1.1em;
+	margin: 0 0 20px;
+	padding: 0;
+	color: #999999;
+}
+#block-block-8 {
+	border-right: 1px solid #ccc;
+	padding-bottom: 0;
+	/*background-color: #F8F8F8;*/
+	margin: 0 25px 0 0;
+}
+/*BLOCK FACETAPI */
+.block-facetapi, #block-apachesolr-search-sort{
+	background: none repeat scroll 0 0 transparent /*#EDF3FA*/;
+	border: 1px solid #ccc;
+	border-width: 1px 1px 0 0;
+	border-top-color: #fff;
+	margin-bottom: 0;
+	margin-right: 25px;
+	padding: 2px 0;
+	padding-bottom: 10px;
+	font-weight: normal;
+	font-size: 85%;
+}
+#block-apachesolr-search-sort ul li{
+float:left;
+padding :10px;
+list-style:none;
+}
+#block-apachesolr-search-sort h2{
+float:left;
+width:auto;
+}
+.block-facetapi.last {
+	border-bottom: none/*1px solid #ccc*/;
+}
+.block-facetapi .block-inner {
+	margin-left: 30px;
+	margin-right: 15px;
+}
+
+.facetapi-collapsible:hover {
+/*background: #CFE5FD;*/
+}
+.facetapi-collapsible .block-title,
+.block-facetapi .block-title {
+	color: #666;
+	font-size: 1.2em;
+	padding-left: 0;
+}
+.facetapi-collapsible .block-title:hover {
+	color: #326ECC;
+}
+.facetapi-collapsible.expanded.active .block-title:hover {
+	color: #666
+}
+
+/* FACETS */
+.facetapi-facet a:hover {
+	color: #39F;
+	text-decoration: none;
+}
+.facetapi-facet a {
+	color: #212121;
+	display: block;
+}
+a.facetapi-active {
+	display: inline;
+}
+.expanded {
+/*THIS CANNOT BE IN HERE LIKE THIS. CAUSES ALL TOP MENU EXPANDED ITEMS TO GO WHITE. See tapas.neu.edu/sites/default/files/capture-images-for-kirsten-remove-later/Capture.JPG
+	background: #f9f9f9;/* #BFD8F1*/;
+*/
+}
+.expanded.active {
+	background: #ffffff;
+}
+.facetapi-collapsible ul li,
+.facetapi-collapsible ul,
+.expanded ul,
+.expanded ul li {
+	color: inherit;
+	background: inherit;
+	text-decoration: none;
+	margin-left: 12px;
+	list-style: none;
+}
+/* OTHER */
+.timeline-desc {
+	line-height: 1.4em;
+}
+.form-item-custom-search-blocks-form-1 label {
+	line-height: 1.7em;
+	padding-bottom: 15px;
+	font-size: 1.1em !important;
+}
+.region-sidebar-first {
+	margin-top: -15px;
+	margin-bottom: -20px;
+}
+.region-sidebar-first .block:first-child {
+	padding-top: 30px; 
+}
+.region-sidebar-first .block.last {
+	padding-bottom: 10px;
+/*border-bottom: 1px solid #CCCCCC;*/
+}
+
+
+
+/*USERS ASKED FOR RESULTS COUNT NEAR TEXT SEARCH RESULTS. CHANGE THIS AS YOU SEE FIT*/
+#content #block-current-search-clone-of-standard{
+border:none !important;
+}
+#content #block-current-search-clone-of-standard .current-search-item-text{
+float: right;
+clear: left;
+font-size: larger;
+/*margin-right: 15em;*/
+text-align: right;
+width: 50%;
+}
+#content h2{
+clear:left;
+}

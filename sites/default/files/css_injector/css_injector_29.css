@@ -1,0 +1,24 @@
+#block-block-4{
+float:left;
+margin-right:40px;
+max-width:400px;
+width:30%;
+}
+#block-block-5{
+float:left;
+width:30%;
+}
+.view-id-og_members_admin{
+float:left;
+width:30%;
+}
+#views-form-og-members-admin-default{
+}
+.form-item-add-roles, .form-item-remove-roles{
+padding:0 35px;
+float:left;
+}
+#edit-actions{
+clear:both;
+padding:0 35px;
+}

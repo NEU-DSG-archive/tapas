@@ -1,0 +1,9 @@
+.history h3{
+/*Not sure why this was here. hoping reason for it has gone because rule used to be "user*" which caused menu-item-2 to be highlighted when on any users page, not just My Account"
+display:none;
+*/
+}
+#block-system-user-menu .menu-item-2 {
+    background-color: #EDF3FA;
+    color: #326ECC !important;
+}

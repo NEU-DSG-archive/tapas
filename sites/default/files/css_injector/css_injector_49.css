@@ -1,0 +1,29 @@
+#search-form {
+clear: left;
+}
+#block-views-exp-solr-facets-page-2{
+display:none;
+    margin-top: 1em;
+}
+#block-custom-search-blocks-1{
+display:inline-block;
+/*removed for sorts..for now    margin-bottom: 48px;*/
+}
+.views-submit-button, .views-reset-button {
+    min-height: 0;
+    margin-bottom: 1em;
+    margin-top: 1em;
+}
+.views-exposed-form .views-exposed-widget .form-submit {
+    margin-top: 0;
+}
+#views-exposed-form-solr-facets-page-2 input{
+margin-top:0;
+}
+#search-toggle label, #search-toggle input{
+float:left;
+}
+#search-toggle input{
+    margin-left: 5px;
+    margin-right: 20px;
+}

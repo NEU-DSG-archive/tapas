@@ -1,0 +1,57 @@
+table{
+table-layout: fixed;
+} 
+.field-multiple-table{
+table-layout:inherit;
+}
+.name-generational-wrapper, .name-title-wrapper{
+margin-top:4px;
+}
+.group-dublin-core-metadata{
+width:95%;
+}
+.fieldset-wrapper .field-item{
+word-wrap:break-word;
+}
+.fieldset-wrapper ul li{
+float:left;
+padding:0 5px;
+}
+.fieldset-wrapper section{
+clear:both;
+}
+.fieldset-wrapper .field-name-field-tei-xml .field-item, .fieldset-wrapper .field-name-field-dc-identifier .field-item{
+word-break:break-all;
+}
+.description{
+display:none;/*added to keep core descriptions intact but hide them to use label-help only*/
+}
+.form-type-name-element .description{
+display:block; /*need name field labels*/
+}
+#edit-field-dc-date .description{
+display:block;/*added because label help doesn't work for date fields*/
+}
+#edit-field-dc-coverage-temporal .description{
+display:block;/*added so format description displays*/
+}
+.group_collection_directions .description, .group_project_directions .description{
+display:block !important;
+}
+label{
+font-weight:bold !important;
+}
+section{
+padding-top:10px;
+}
+.views-widget-filter-group_access_value{
+display:none;
+}
+.views-widget-filter-group_access_value_1{
+display:none;
+}
+/*for tax manager*/
+#taxonomy-manager-tree .has-children, .treeview li{
+float:none;
+clear:both;
+}

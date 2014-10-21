@@ -1,0 +1,20 @@
+#block-multistep-group ol .even{
+display:none;
+}
+#block-multistep-group ol .first{
+display:list-item;
+}
+#edit-field-project-logo-upload-und-0-upload-button{
+display:none;
+}
+
+.form-item-field-dummy-field-und{
+display:none;
+}
+
+.collection-directions{
+	font-size:larger;
+	font-style:italic;
+	font-weight:bold;
+}
+

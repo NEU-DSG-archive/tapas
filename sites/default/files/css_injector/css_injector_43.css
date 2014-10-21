@@ -1,0 +1,76 @@
+#url-prefix{
+position:relative;
+float:left;
+clear:both;
+top:8px;
+font-weight:bold;
+}
+#edit-field-url-und-0-value, #edit-field-title-und-0-value{
+position:relative;
+float:left;
+}
+#edit-next{
+background-image: url('/sites/default/files/pictures/finish-collection.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+#edit-field-collection-url, #edit-group-content-access, #edit-field-title, #edit-field-project-logo-upload, #edit-body, #edit-field-collection-page-elements {
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -khtml-border-radius: 6px;
+    border-radius: 6px;
+    clear: both;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    position: relative;
+    width: 95%;
+background-color: rgba(0, 0, 0, 0.01);
+border: 1px dotted #CCCCCC;
+border-radius: 6px 6px 6px 6px;
+}
+.project-form-right{
+    float: right;
+    min-height: 80px;
+    padding: 20px;
+    position: relative;
+    width: 45%;
+}
+.project-form-right ul{
+padding-left:20px;
+}
+.project-blurb{
+position:relative;
+float:left;
+width:45%;
+}
+.description-labelhelpmod{
+white-space: wrap;
+}
+#group-node-form .form-item .form-item{
+border:none;
+padding:0;
+}
+#block-multistep-group ol .even{
+display:none;
+}
+#block-multistep-group ol .first{
+display:list-item;
+}
+#edit-field-project-logo-upload-und-0-upload-button{
+display:none;
+}
+
+.form-item-field-dummy-field-und{
+display:none;
+}
+
+.collection-directions{
+	font-size:larger;
+	font-style:italic;
+	font-weight:bold;
+}
