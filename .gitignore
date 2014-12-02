@@ -16,3 +16,6 @@ sites/*/private/
 # Ignore .htaccess - we create this as a symlink to the appropriate .htaccess.env
 # on a per machine basis.
 .htaccess
+
+# Ignore .swp files
+**.swp
