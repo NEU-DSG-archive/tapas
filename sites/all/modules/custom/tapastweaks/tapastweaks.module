@@ -1,0 +1,149 @@
+<?php
+
+/**
+ * @file
+ * TAPAS-specific interface tweaks to Drupal.
+ */
+
+
+/**
+ * Implements hook_help().
+ */
+
+function randwikipage_help($path, $arg) {
+
+	switch($path) {
+		case "admin/help#randwikipage":
+			return '<p>' . t("Interface tweaks made to Drupal for the TAPAS project.") . '</p>';
+			break;
+	}
+}
+
+
+/**
+ * Implements hook_block_view()
+ */
+
+function randwikipage_block_view($delta = '') {
+	switch ($delta) {
+		case 'randwikipage':
+			$block['subject'] = t('Random Wikipedia Page');
+
+			$items = randwikipage_contents('block');
+			if (empty($items)) {
+				$block['content'] = t('No links available.');
+			}
+			else {
+				//pass data through theme function
+				$block['content']['links'] = array(
+					'#theme' => 'item_list__randwikipage__block',
+					'#items' => $items);
+				$block['content']['more'] = array(
+					'#theme' => 'more_link__randwikipage',
+					'#url' => 'randwikipage',
+					'#title' => t('see random list as page rather than block'),
+				);
+			}
+		return $block;
+	}
+}
+
+/**
+ * Implements hook_menu()
+ */
+
+function randwikipage_menu() {
+	$items = array();
+
+	$items['admin/config/content/randwikipage'] = array(
+		'title' => 'Random wiki page',
+		'description' => 'Configuration for random wiki page module',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('randwikipage_form'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+
+	$items['randwikipage'] = array(
+		'title' => 'Random wiki page', 
+		'page callback' => 'randwikipage_page',
+		'type' => MENU_NORMAL_ITEM,
+		'access callback' => TRUE,
+	);
+
+	return $items;
+
+}
+
+
+/**
+ * Page callback: Random Wikilinks settings
+ *
+ * @see randwikipage_menu
+ */
+
+ function randwikipage_form($form, &$form_state) {
+	 $form['randwikipage_max'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Maximum number of links'),
+		'#default_value' => variable_get('randwikipage_max', 3),
+		'#size' => 2,
+		'#maxlength' => 2,
+		'#description' => t('The maximum number of link to display in the block.'),
+		'#required' => TRUE,
+	);
+
+	return system_settings_form($form);
+
+}
+
+/**
+ * Implements validation from the Form API
+ *
+ * @param $form
+ *		A structured array containing the elements and properties of the form
+ * @param $form_state
+ *		An array that stores information about the form's currentstate
+ *		during processing.
+ */
+
+function randwikipage_form_validate($form, &$form_state) {
+	$max_num = $form_state['values']['randwikipage_max'];
+	if (!is_numeric($max_num)) {
+		form_set_error('randwikipage_max', t('You must enter a number for the ' .
+			'maximum numer of links to display.'));
+	}
+	elseif ($max_num <= 0) {
+		form_set_error('randwikipage_max', t('Maximum number of links to ' .
+			'display must be positive.'));
+	}
+}
+
+/**
+ * Custom page callback function, declared in randwikipage_menu().
+ */
+
+function randwikipage_page() {
+
+	drupal_set_title('Random Wikipedia Links');
+
+	$items = randwikipage_contents('page');
+
+	if (empty($items)) { //no content in the last week
+		$page_array['randwikipage_arguments'] = array(
+			'#title' => t('Links from the "Random" function of the Wikipedia API'),
+			'#markup' => t('No links available.'),
+		);
+
+		return $page_array;
+	}
+	else {
+		$page_array['randwikipage_arguments'] = array(
+			'#title' => t('Links from the "Random" function of the wikipedia API'),
+			'#items' => $items,
+			'#theme' => 'item_list__randwikipage',
+		);
+		return $page_array;
+	}
+}
+
