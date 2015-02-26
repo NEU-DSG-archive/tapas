@@ -10,11 +10,48 @@
  * Implements hook_help().
  */
 
-function randwikipage_help($path, $arg) {
+function tapastweaks_help($path, $arg) {
 
 	switch($path) {
-		case "admin/help#randwikipage":
+		case "admin/help#tapastweaks":
 			return '<p>' . t("Interface tweaks made to Drupal for the TAPAS project.") . '</p>';
 			break;
 	}
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+
+function tapastweaks_form_alter(&$form, &$form_state, $form_id) {
+
+	if ($form['#id'] == 'node-delete-confirm') {
+
+
+		$nodetype = ""
+
+		if ($node->type == 'group') {
+			$nodetype = 'project'
+		} else if ($node->type == 'collection') {
+			$nodetype = 'collection')
+		}
+
+		if ($nodetype) {
+
+			if(isset($node->field_title['und'][0]['value'])) {
+				$the_title = $node->field_title['und'][0]['value'];
+			} else {
+				$the_title = $node->title;
+			}
+
+			$form['#description'] = 
+				'<h1>' .
+				t("Are you sure you want to delte $the_title?") .
+				'</h1>' .
+				t("This cannot be undone.") .
+				'<span class="warning">' .
+				t("This will delete ALL the items in this $nodetype!") .
+				'</span>'
+		}
+
 }
