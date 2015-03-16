@@ -1,0 +1,37 @@
+#edit-field-url, #edit-group-access, #edit-field-title, #edit-field-project-logo-upload, #edit-field-institution, #edit-body, #edit-field-external-links, #edit-field-page-elements, #edit-field-project-members-to-notify {
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -khtml-border-radius: 6px;
+    border-radius: 6px;
+    clear: both;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    position: relative;
+    width: 95%;
+background-color: rgba(0, 0, 0, 0.01);
+border: 1px dotted #CCCCCC;
+border-radius: 6px 6px 6px 6px;
+}
+.project-form-right{
+    float: right;
+    min-height: 80px;
+    padding: 20px;
+    position: relative;
+    width: 45%;
+}
+.project-form-right ul{
+padding-left:20px;
+}
+.project-blurb{
+position:relative;
+float:left;
+width:45%;
+}
+.description-labelhelpmod{
+white-space: wrap;
+}
+#group-node-form .form-item .form-item{
+border:none;
+padding:0;
+}

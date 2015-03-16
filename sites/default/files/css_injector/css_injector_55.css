@@ -1,0 +1,33 @@
+#edit-field-collection-term, #edit-field-dc-rights, #edit-field-rights-granted-cc, #edit-field-rights-granted, #edit-field-rights-certification{
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -khtml-border-radius: 6px;
+    border-radius: 6px;
+    clear: both;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    position: relative;
+    width: 95%;
+background-color: rgba(0, 0, 0, 0.01);
+border: 1px dotted #CCCCCC;
+border-radius: 6px 6px 6px 6px;
+}
+#node_tei_bulk_upload_form_group_collection_and_rights{
+display:none;
+}
+.vertical-tabs, #edit-og-group-ref, #edit-actions{
+display:none;
+}
+#edit-field-collection-term {
+display: block !important;
+}
+#page-title {
+display: block !important;
+}
+.form-item-field-rights-certification-und label, #edit-field-rights-granted-cc label, #edit-field-collection-term label, .form-item-field-upload-files-und-0 label{
+color:red;
+}
+.option, .field-content{
+color:#999;
+}

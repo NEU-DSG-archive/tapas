@@ -1,0 +1,12 @@
+#edit-next{
+background-image: url('/sites/default/files/pictures/group-new-collection-created.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+#multistep-group_new_collection_created h1{
+display:none;
+}

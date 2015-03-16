@@ -1,0 +1,34 @@
+#edit-next-directions{
+background-image: url('/sites/default/files/pictures/node-add-group.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+#edit-next{
+background-image: url('/sites/default/files/pictures/node-add-group1.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+#project-url-warning{
+    background: none repeat scroll 0 0 #ec4a44;
+    font-size: large;
+color:white;
+}
+#url-prefix{
+position:relative;
+float:left;
+clear:both;
+top:8px;
+font-weight:bold;
+}
+#edit-field-url-und-0-value, #edit-field-title-und-0-value{
+position:relative;
+float:left;
+}

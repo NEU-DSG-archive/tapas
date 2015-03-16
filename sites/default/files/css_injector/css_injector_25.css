@@ -1,0 +1,58 @@
+.view-filters{
+clear:both;
+}
+.item-list ul, .item-list ul li{
+margin:0;
+padding:0;
+}
+.views-exposed-widget{
+min-height:75px;
+width:22%;
+margin:10px;
+}
+.views-submit-button{
+clear:left;
+}
+.views-submit-button, .views-reset-button{
+width:auto !important;
+}
+select{
+max-width:100%;
+}
+#edit-field-dc-coverage-temporal-value-value.date-padding, #edit-field-dc-coverage-temporal-value2-value.date-padding, #edit-field-dc-date-value-value.date-padding{
+max-width: 100%;
+}
+.form-text form-autocomplete{
+max-width:80%;
+}
+.form-item-field-dc-coverage-temporal-value-value, .form-item-field-dc-coverage-temporal-value2-value, .form-item-field-dc-date-value-value{
+max-width: 90%;
+float:left;
+}
+.container-inline-date .form-item, .container-inline-date .form-item input {
+    max-width: 100%;
+}
+.bef-secondary-options .form-item{
+width: 22%;
+float:left;
+margin:10px;
+height:60px;
+}
+
+#edit-secondary-wrapper{
+width:95%;
+clear:both;
+float:left;
+}
+#edit-operation{
+width:auto !important;
+}
+.vbo-views-form{
+width:99%;
+}
+#views-exposed-form-clone-2-of-collection-view-page-5, #views-exposed-form-collection-view-panel-pane-1, #views-exposed-form-collection-view-panel-pane-2, #views-exposed-form-collection-view-page-1, #views-exposed-form-clone-2-of-collection-view-page-1{
+display:none;
+}
+#show-content-button-views-exposed-form-clone-2-of-collection-view-page-5, #show-content-button-views-exposed-form-collection-view-panel-pane-1, #show-content-button-views-exposed-form-collection-view-panel-pane-2, #show-content-button-views-exposed-form-collection-view-page-1, #show-content-button-views-exposed-form-clone-2-of-collection-view-page-1{
+display:block !important;
+}

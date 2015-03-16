@@ -1,0 +1,24 @@
+.form-item-field-rights-certification-und label, #edit-field-rights-granted-cc label{
+color:red;
+}
+
+#edit-field-project-logo-upload-und-0-upload-button{
+display:none;
+}
+
+#edit-field-tei-tapas-xslt-und-none{
+display:none;
+}
+
+#edit-group-theme{
+display:none;
+}
+#edit-og-group-ref{
+display:none;
+}
+#edit-field-tei-xml-und-0-upload-button{
+display:none;
+}
+#edit-field-tei-xsl-und-0-upload-button{
+display:none;
+}

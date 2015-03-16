@@ -1,0 +1,56 @@
+#search-reset{
+    margin-bottom: 1em;
+    margin-top: 1em;
+}
+.form-actions {
+margin-top: 1em;
+margin-bottom: 1em;
+}
+.search-results .title a {
+font-weight: bold;
+}
+.search-results .title {
+    font-size: 1.4em;
+}
+
+.sidebar-first .content-inner {
+/*    margin-left: 0;
+    margin-right: 0;
+*/
+}
+value strong, .field-content b{
+    background-color: yellow;
+}
+.contextual-links-region {
+position: inherit;
+}
+.user-picture{
+	display:none;
+}
+.node-header, footer{
+display:none;
+}
+
+#footer{
+display:block;
+}
+
+.field-name-field-title-linked{
+  font-size:larger;
+  font-weight:bolder;
+}
+/*use if table needed
+#content{
+display:table;
+}
+article{
+display:table-row;
+width:100%;
+}
+
+section, article .node-content div{
+display:table-cell;
+width:25%;
+vertical-align:top;
+}
+*/

@@ -1,0 +1,44 @@
+#edit-next{
+background-image: url('/sites/default/files/pictures/save-tei-content.png');
+width:250px;
+height:47px;
+border-style: none;
+background-color: transparent;
+text-indent: -1000px;    /* hack to hide the text */
+cursor:pointer;
+}
+.image-widget-data {
+    width: 90%;
+}
+
+#edit-field-tei-images, #edit-field-dc-alternative, #edit-field-dc-source, #edit-field-dc-source-full-text, #edit-field-author-first-name-dc-creat, #edit-field-author-last-name-dc-creat, #edit-field-author-corporate-dc-creato, #edit-field-dc-contributor, #edit-field-language-dc-language, #edit-field-dc-description, #edit-field-dc-date, #edit-field-what-dc-date-fields, #edit-field-dc-coverage-temporal, #edit-field-dc-coverage-spatial-taxono, #edit-field-dd-classification, #edit-field-getty-aat-genre-dc-subject, #edit-field-loc-classification, #edit-field-dc-subject, #edit-field-rights-certification, #edit-field-publication-location, #edit-field-dc-rights, #edit-field-rights-granted-cc, #edit-field-rights-granted, #edit-field-author{
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    -khtml-border-radius: 6px;
+    border-radius: 6px;
+    clear: both;
+    float: left;
+    margin: 10px;
+    padding: 20px;
+    position: relative;
+    width: 95%;
+background-color: rgba(0, 0, 0, 0.01);
+border: 1px dotted #CCCCCC;
+border-radius: 6px 6px 6px 6px;
+}
+
+#field-dc-alternative-values, #field-dc-contributor-values{
+width:auto !important;
+min-width:300px;
+max-width:1500px;
+}
+#field-dc-alternative-values td, #field-dc-contributor-values td{
+max-width: 1470px;
+    min-width: 270px;
+    width: 100%;
+}
+.field-multiple-drag{
+max-width: 30px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+}

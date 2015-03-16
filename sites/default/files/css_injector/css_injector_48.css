@@ -1,0 +1,51 @@
+#block-current-search-facet-results{
+display:none;
+}
+.form-actions {
+    margin-top: 1em;
+}
+/*
+#block-views-exp-solr-facets-page-2{
+display:inline-block;
+    margin-top: 1em;
+}
+.search-form input {
+    margin-top: 15px;
+}
+.form-item, .form-actions {
+    margin-top: 0;
+}
+*/
+.current-search-group {
+    line-height: 1.5;
+}
+
+#block-custom-search-blocks-1{
+display:none;
+    margin-bottom: 48px;
+}
+#search-reset {
+margin-top: 1em;
+}
+.views-submit-button, .views-reset-button {
+    min-height: 0;
+    margin-bottom: 1em;
+    margin-top: 1em;
+}
+.views-exposed-form .views-exposed-widget .form-submit {
+    margin-top: 0;
+}
+#views-exposed-form-solr-facets-page-2 input{
+    margin-bottom: 0;
+    margin-top: 0;
+}
+.form-item, .form-actions {
+    margin-bottom: 0;
+}
+#search-toggle label, #search-toggle input{
+float:left;
+}
+#search-toggle input{
+    margin-left: 5px;
+    margin-right: 20px;
+}
